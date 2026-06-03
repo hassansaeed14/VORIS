@@ -1,10 +1,13 @@
 import asyncio
 import base64
+import hashlib
 import json
 import re
 import sqlite3
 import sys
 import time
+import urllib.error
+import urllib.request
 from urllib.parse import quote
 from datetime import datetime
 from pathlib import Path
@@ -175,6 +178,8 @@ app.mount("/static-v2", StaticFiles(directory=str(WEB_V2_DIR)), name="static-v2"
 if MODERN_UI_DIR.is_dir():
     app.mount("/assets", StaticFiles(directory=str(MODERN_UI_DIR)), name="modern-ui-assets")
 GENERATED_DIR.mkdir(parents=True, exist_ok=True)
+GENERATED_IMAGE_DIR = PROJECT_ROOT / "generated" / "images"
+GENERATED_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class Command(BaseModel):
@@ -843,19 +848,118 @@ POLLINATIONS_TRIGGER_RE = re.compile(
 )
 
 
-def _try_pollinations_image_bypass(text: str) -> Optional[dict[str, str]]:
+def _extract_pollinations_prompt(text: str) -> Optional[str]:
     raw = str(text or "").strip()
     if not raw or not POLLINATIONS_TRIGGER_RE.match(raw):
         return None
     prompt = POLLINATIONS_TRIGGER_RE.sub("", raw, count=1).strip()
     if not prompt:
         return None
-    encoded_prompt = quote(prompt)
-    image_url = (
-        f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-        f"?width=1024&height=1024&nologo=true"
+    return prompt
+
+
+def _pollinations_api_key() -> str:
+    return os.getenv("POLLINATIONS_API_KEY", "").strip()
+
+
+def _build_pollinations_unavailable_payload(
+    *,
+    prompt: str,
+    session_id: str,
+    request_id: str,
+    reason: str,
+    error: Optional[str] = None,
+) -> dict[str, Any]:
+    message = (
+        "Image generation is not configured right now. Pollinations now requires an API key, "
+        "so add POLLINATIONS_API_KEY to your .env file and restart VORIS."
     )
-    return {"prompt": prompt, "image_url": image_url}
+    if reason == "payment_required":
+        message = (
+            "Pollinations rejected the image request because the configured key has no available balance "
+            "or budget. Add credits or use another POLLINATIONS_API_KEY, then try again."
+        )
+    elif reason == "provider_failed":
+        print(f"IMAGE GENERATION ERROR: ")
+        message = "Pollinations did not return an image this time. Please try again in a moment."
+
+    return _attach_action_trace(
+        {
+            "success": True,
+            "reply": message,
+            "content": message,
+            "execution_mode": "image_generation_unavailable",
+            "intent": "image_generation",
+            "detected_intent": "image_generation",
+            "kind": "image_generation",
+            "agent_used": "pollinations",
+            "mode": "image_generation_unavailable",
+            "session_id": session_id,
+            "request_id": request_id,
+            "degraded": True,
+            "provider": "pollinations",
+            "status": reason,
+            "error": error,
+            "image_generation": {
+                "success": False,
+                "status": reason,
+                "provider": "pollinations",
+                "prompt": prompt,
+                "images": [],
+                "error": error,
+                "message": message,
+            },
+        },
+        request_id=request_id,
+        raw_input=prompt,
+        final_status="degraded",
+    )
+
+
+def _try_pollinations_image_bypass(text: str) -> Optional[dict[str, str]]:
+    prompt = _extract_pollinations_prompt(text)
+    if not prompt:
+        return None
+    api_key = _pollinations_api_key()
+    if not api_key:
+        return None
+    encoded_prompt = quote(prompt)
+    upstream_url = (
+        f"https://gen.pollinations.ai/image/{encoded_prompt}"
+        f"?model=flux&width=1024&height=1024&nologo=true&key={quote(api_key)}"
+    )
+    image_id = hashlib.sha256(f"{prompt}:{time.time()}".encode("utf-8")).hexdigest()[:20]
+    request = urllib.request.Request(
+        upstream_url,
+        headers={"User-Agent": "VORIS/1.0 image-generation"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            status_code = int(getattr(response, "status", 200) or 200)
+            content_type = str(response.headers.get("Content-Type") or "").lower()
+            if status_code != 200 or not content_type.startswith("image/"):
+                return {
+                    "prompt": prompt,
+                    "status": "provider_failed",
+                    "error": f"Pollinations returned {status_code} {content_type}".strip(),
+                }
+            extension = ".jpg" if "jpeg" in content_type or "jpg" in content_type else ".webp" if "webp" in content_type else ".png"
+            image_bytes = response.read()
+    except urllib.error.HTTPError as exc:
+        status_code = int(getattr(exc, "code", 0) or 0)
+        return {
+            "prompt": prompt,
+            "status": "payment_required" if status_code == 402 else "provider_failed",
+            "error": f"Pollinations returned HTTP {status_code}",
+        }
+    except Exception as exc:
+        return {"prompt": prompt, "status": "provider_failed", "error": str(exc)}
+
+    if not image_bytes:
+        return {"prompt": prompt, "status": "provider_failed", "error": "Pollinations returned an empty image."}
+    output_path = GENERATED_IMAGE_DIR / f"pollinations-{image_id}{extension}"
+    output_path.write_bytes(image_bytes)
+    return {"prompt": prompt, "image_url": f"/generated-images/{output_path.name}", "status": "ok"}
 
 
 def _build_pollinations_bypass_payload(
@@ -1670,7 +1774,7 @@ async def aura_request_metrics_middleware(request: Request, call_next):
 @app.middleware("http")
 async def aura_private_access_middleware(request: Request, call_next):
     path = request.url.path
-    if path.startswith("/static") or path.startswith("/assets") or path.startswith("/downloads"):
+    if path.startswith("/static") or path.startswith("/assets") or path.startswith("/downloads") or path.startswith("/generated-images"):
         return await call_next(request)
 
     setup_required = requires_first_run_setup()
@@ -2047,8 +2151,19 @@ async def api_chat(payload: ChatApiRequest, request: Request):
             )
             return _json_response(vision_payload)
 
+        pollinations_prompt = _extract_pollinations_prompt(raw_msg)
+        if pollinations_prompt and not _pollinations_api_key():
+            return _json_response(
+                _build_pollinations_unavailable_payload(
+                    prompt=pollinations_prompt,
+                    session_id=session_id,
+                    request_id=request_id,
+                    reason="not_configured",
+                )
+            )
+
         pollinations_bypass = _try_pollinations_image_bypass(raw_msg)
-        if pollinations_bypass:
+        if pollinations_bypass and pollinations_bypass.get("image_url"):
             bypass_payload = _build_pollinations_bypass_payload(
                 image_url=pollinations_bypass["image_url"],
                 session_id=session_id,
@@ -2061,6 +2176,16 @@ async def api_chat(payload: ChatApiRequest, request: Request):
                 final_status="ok",
             )
             return _json_response(bypass_payload)
+        if pollinations_bypass:
+            return _json_response(
+                _build_pollinations_unavailable_payload(
+                    prompt=pollinations_bypass.get("prompt") or raw_msg,
+                    session_id=session_id,
+                    request_id=request_id,
+                    reason=pollinations_bypass.get("status") or "provider_failed",
+                    error=pollinations_bypass.get("error"),
+                )
+            )
 
         if not is_vision_request and detect_image_generation_request(raw_msg):
             image_payload = _build_image_generation_chat_payload(
@@ -2546,6 +2671,45 @@ async def api_image_status():
 @app.post("/api/generate/image")
 async def api_generate_image(payload: ImageGenerateRequest, request: Request):
     request_id = new_request_id("image")
+    session_id = _resolve_session_id(request)
+    pollinations_prompt = _extract_pollinations_prompt(payload.prompt) or str(payload.prompt or "").strip()
+    if pollinations_prompt:
+        if not _pollinations_api_key():
+            return JSONResponse(
+                content=_build_pollinations_unavailable_payload(
+                    prompt=pollinations_prompt,
+                    session_id=session_id,
+                    request_id=request_id,
+                    reason="not_configured",
+                ),
+                headers=_cors_headers(),
+            )
+        pollinations_result = _try_pollinations_image_bypass(f"generate image of {pollinations_prompt}")
+        if pollinations_result and pollinations_result.get("image_url"):
+            response_payload = _build_pollinations_bypass_payload(
+                image_url=pollinations_result["image_url"],
+                session_id=session_id,
+                request_id=request_id,
+            )
+            _attach_action_trace(
+                response_payload,
+                request_id=request_id,
+                raw_input=payload.prompt,
+                final_status="ok",
+            )
+            return JSONResponse(content=response_payload, headers=_cors_headers())
+        if pollinations_result:
+            return JSONResponse(
+                content=_build_pollinations_unavailable_payload(
+                    prompt=pollinations_result.get("prompt") or pollinations_prompt,
+                    session_id=session_id,
+                    request_id=request_id,
+                    reason=pollinations_result.get("status") or "provider_failed",
+                    error=pollinations_result.get("error"),
+                ),
+                headers=_cors_headers(),
+            )
+
     result = generate_image(payload.prompt, style=payload.style, size=payload.size)
     response_payload = {
         "success": bool(result.get("success")),
@@ -2901,6 +3065,18 @@ async def download_generated_document(file_name: str, request: Request):
     response = FileResponse(access["file_path"], filename=access["file_name"])
     _attach_local_session_cookie(response, session_id=_resolve_session_id(request), user=user)
     return response
+
+
+@app.get("/generated-images/{file_name}")
+async def serve_generated_image(file_name: str):
+    safe_name = Path(file_name or "").name
+    if safe_name != file_name or not safe_name.startswith("pollinations-"):
+        raise HTTPException(status_code=404, detail="Image not found.")
+    image_path = GENERATED_IMAGE_DIR / safe_name
+    if not image_path.is_file():
+        raise HTTPException(status_code=404, detail="Image not found.")
+    media_type = "image/jpeg" if image_path.suffix.lower() in {".jpg", ".jpeg"} else "image/webp" if image_path.suffix.lower() == ".webp" else "image/png"
+    return FileResponse(image_path, media_type=media_type)
 
 
 @app.get("/history")

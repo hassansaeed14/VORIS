@@ -97,6 +97,10 @@ class ResponseRenderingTests(unittest.TestCase):
     def test_api_chat_routes_image_request_to_honest_unavailable_response(self):
         with patch.object(api_server, "_current_user", return_value=None), patch.object(
             api_server,
+            "_pollinations_api_key",
+            return_value="",
+        ), patch.object(
+            api_server,
             "_attempt_persist_chat_turn",
             return_value={"saved": False},
         ):

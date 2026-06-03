@@ -76,7 +76,7 @@ def write_code(task):
                 }
             ],
             temperature=0.2,
-            max_tokens=1400
+            max_tokens=4096
         )
 
         result = completion.choices[0].message.content if completion.choices else ""

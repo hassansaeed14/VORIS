@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import urlencode
-
+from tools.app_scanner import launch_any_app
 
 SUPPORTED_APPLICATIONS: Dict[str, Dict[str, Any]] = {
     "chrome": {
@@ -173,14 +173,23 @@ def open_application(app_name: str | None) -> Dict[str, Any]:
     availability = get_application_availability(app_name)
     normalized = availability.get("app_name")
     if not availability.get("supported"):
+        from tools.app_scanner import launch_any_app
+    scanner_result = launch_any_app(app_name)
+    if scanner_result["success"]:
         return {
-            "success": False,
-            "status": "unsupported",
-            "app_name": None,
-            "message": "I can't open that yet.",
-            "error": "Unsupported desktop application.",
+            "success": True,
+            "status": "opened",
+            "app_name": app_name,
+            "label": app_name,
+            "message": scanner_result["message"],
         }
-
+    return {
+        "success": False,
+        "status": "unsupported",
+        "app_name": None,
+        "message": "I can't open that yet.",
+        "error": "Unsupported desktop application.",
+    }
     label = str(availability.get("label") or normalized or "That app")
     launch_command = availability.get("launch_command")
     if not launch_command:

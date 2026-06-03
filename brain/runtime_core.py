@@ -501,14 +501,14 @@ def _resolve_desktop_open_request(command: str) -> Optional[Dict[str, str]]:
     if not match:
         return None
     target = str(match.group("target") or "").strip()
-    app_name = normalize_application_name(target)
-    if not app_name:
+    if not target:
         return None
+    # Try hardcoded list first, fall back to raw target for app_scanner
+    app_name = normalize_application_name(target) or target.lower()
     return {
         "app_name": app_name,
-        "label": get_application_label(app_name) or app_name.title(),
+        "label": get_application_label(app_name) or target.title(),
     }
-
 
 def _sanitize_chat_orchestration(orchestration: Dict[str, Any]) -> Dict[str, Any]:
     safe_orchestration = dict(orchestration or {})
