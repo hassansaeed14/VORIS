@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -11,7 +11,7 @@ from security.security_config import ACTION_APPROVAL_FILE, AUTH_SESSION_IDLE_DEL
 
 
 def _now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _read_json(path: Path, fallback: Any) -> Any:

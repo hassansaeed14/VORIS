@@ -9,7 +9,7 @@ import time
 import urllib.error
 import urllib.request
 from urllib.parse import quote
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 from groq import Groq
@@ -535,7 +535,7 @@ def _normalize_session_id(session_id: Optional[str]) -> str:
 
 
 def _generate_local_session_id() -> str:
-    return _normalize_session_id(f"local-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{time.time_ns() % 1000000}")
+    return _normalize_session_id(f"local-{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d%H%M%S')}-{time.time_ns() % 1000000}")
 
 
 def _resolve_session_id(request: Optional[Request], explicit: Optional[str] = None) -> str:

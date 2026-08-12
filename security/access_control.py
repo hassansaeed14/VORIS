@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 
 from security.audit_logger import record_audit_event
@@ -13,7 +13,7 @@ from security.trust_engine import ApprovalType, evaluate_action
 
 
 def _now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class AccessController:

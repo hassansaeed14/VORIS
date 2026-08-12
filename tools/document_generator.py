@@ -5,7 +5,7 @@ import re
 import textwrap
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 from uuid import uuid4
@@ -437,7 +437,7 @@ def secure_generated_document_access(
             "owner_user_id": normalized_user_id,
             "access_token": access_token,
             "access_scope": access_scope,
-            "created_at": datetime.utcnow().isoformat() + "Z",
+            "created_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z",
         }
         access_map[file_name] = {
             "download_url": _download_access_url(file_name, access_token),
@@ -1484,7 +1484,7 @@ def _write_docx(path: Path, layout: DocumentLayout) -> None:
   <dc:title>{xml_escape(layout.title)}</dc:title>
         <dc:creator>VORIS</dc:creator>
         <cp:lastModifiedBy>VORIS</cp:lastModifiedBy>
-  <dcterms:created xsi:type="dcterms:W3CDTF">{datetime.utcnow().isoformat()}Z</dcterms:created>
+  <dcterms:created xsi:type="dcterms:W3CDTF">{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}Z</dcterms:created>
 </cp:coreProperties>"""
 
     app_xml = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1772,7 +1772,7 @@ def _write_pptx(path: Path, layout: DocumentLayout) -> None:
   <dc:title>{xml_escape(layout.title)}</dc:title>
         <dc:creator>VORIS</dc:creator>
         <cp:lastModifiedBy>VORIS</cp:lastModifiedBy>
-  <dcterms:created xsi:type="dcterms:W3CDTF">{datetime.utcnow().isoformat()}Z</dcterms:created>
+  <dcterms:created xsi:type="dcterms:W3CDTF">{datetime.now(timezone.utc).replace(tzinfo=None).isoformat()}Z</dcterms:created>
 </cp:coreProperties>"""
 
     app_xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

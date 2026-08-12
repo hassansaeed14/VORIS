@@ -37,7 +37,7 @@ from __future__ import annotations
 import json
 import re
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -71,7 +71,7 @@ MIN_PASSWORD_LENGTH = 8
 
 
 def _now() -> datetime:
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _iso(dt: datetime) -> str:

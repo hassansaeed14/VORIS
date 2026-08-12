@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Mapping, Optional
 
 from config.permissions import (
@@ -322,7 +322,7 @@ def allow_for_session(command: str, minutes: int = 30) -> None:
     """
 
     data = load_permissions()
-    expires = datetime.utcnow() + timedelta(minutes=minutes)
+    expires = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=minutes)
     data.setdefault("trusted_sessions", {})[normalize_action(command)] = {
         "expires_at": expires.strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -345,7 +345,7 @@ def is_session_allowed(command: str) -> bool:
         return False
     try:
         expires = datetime.strptime(trusted[key]["expires_at"], "%Y-%m-%d %H:%M:%S")
-        if datetime.utcnow() <= expires:
+        if datetime.now(timezone.utc).replace(tzinfo=None) <= expires:
             return True
     except Exception:
         pass
