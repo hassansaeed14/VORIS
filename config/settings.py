@@ -77,6 +77,7 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY", "")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 MODEL_NAME = "llama-3.3-70b-versatile"
 GROQ_VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct")
+SAMBANOVA_VISION_MODEL = os.getenv("SAMBANOVA_VISION_MODEL", "Llama-3.2-11B-Vision-Instruct")
 APP_NAME = "VORIS"
 VERSION = "1.0.0"
 DEFAULT_REASONING_PROVIDER = os.getenv(
@@ -94,9 +95,16 @@ PROVIDER_MODEL_MAP = {
     "ollama": os.getenv("OLLAMA_MODEL", "llama3.1"),
 }
 
+# Groq leads while it is the only configured key; SambaNova automatically takes
+# the lead as soon as SAMBANOVA_API_KEY is present (matching DEFAULT_REASONING_PROVIDER).
+_DEFAULT_PROVIDER_PRIORITY = (
+    "sambanova,groq,gemini,openai,openrouter,claude,ollama"
+    if SAMBANOVA_API_KEY
+    else "groq,sambanova,gemini,openai,openrouter,claude,ollama"
+)
 PROVIDER_PRIORITY = tuple(
     item.strip().lower()
-    for item in os.getenv("AURA_PROVIDER_PRIORITY", "sambanova,groq,gemini,openai,openrouter,claude,ollama").split(",")
+    for item in os.getenv("AURA_PROVIDER_PRIORITY", _DEFAULT_PROVIDER_PRIORITY).split(",")
     if item.strip()
 )
 

@@ -135,7 +135,7 @@ Evidence:
 
 Limitations:
 
-- Local reliability depends heavily on valid keys and provider availability, especially Groq.
+- Local reliability depends heavily on valid keys and provider availability. Groq is the live primary until a SAMBANOVA_API_KEY is configured, at which point SambaNova takes routing priority.
 - Configured providers are not guaranteed healthy.
 
 ## Memory / Personalization
@@ -214,7 +214,7 @@ Limitations:
 
 ## Provider Truth
 
-Groq is the practical primary live provider when configured and healthy. Gemini, OpenAI, Ollama, or other paths should be treated as configured/unverified, degraded, or unavailable unless real checks prove otherwise.
+Groq is the practical primary live provider when configured and healthy; SambaNova automatically takes priority once SAMBANOVA_API_KEY is set. Gemini, OpenAI, Ollama, or other paths should be treated as configured/unverified, degraded, or unavailable unless real checks prove otherwise.
 
 ## Voice Truth
 

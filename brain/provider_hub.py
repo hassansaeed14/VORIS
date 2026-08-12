@@ -20,6 +20,7 @@ from config.settings import (
     PROVIDER_PRIORITY,
     SAMBANOVA_API_KEY,
     SAMBANOVA_BASE_URL,
+    SAMBANOVA_VISION_MODEL,
 )
 
 try:
@@ -673,9 +674,30 @@ class ProviderHub:
         if OpenAI is None or not SAMBANOVA_API_KEY:
             raise ProviderExecutionError("sambanova", status=STATUS_NOT_CONFIGURED, error="SambaNova provider is not configured.", model=_provider_model("sambanova"))
         client = OpenAI(api_key=SAMBANOVA_API_KEY, base_url=SAMBANOVA_BASE_URL or "https://api.sambanova.ai/v1")
+
+        model_to_use = _provider_model("sambanova")
+        processed_messages: List[Dict[str, Any]] = []
+        for msg in messages:
+            content = str(msg.get("content", ""))
+            vision_payload = extract_vision_payload(content) if msg.get("role") == "user" else None
+            if vision_payload is not None:
+                prompt_text, image_url = vision_payload
+                model_to_use = SAMBANOVA_VISION_MODEL
+                processed_messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt_text},
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    }
+                )
+                continue
+            processed_messages.append(msg)
+
         response = client.chat.completions.create(
-            model=_provider_model("sambanova"),
-            messages=messages,
+            model=model_to_use,
+            messages=processed_messages,
             max_tokens=max_tokens,
             temperature=temperature,
         )

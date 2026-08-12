@@ -74,7 +74,7 @@ from brain.provider_hub import (
 )
 from config.master_spec import CAPABILITY_LABELS, HYBRID_IMPLEMENTATION_ORDER
 from config.system_modes import list_system_modes
-from config.settings import GROQ_API_KEY, GROQ_VISION_MODEL, MODEL_NAME
+from config.settings import DEFAULT_REASONING_PROVIDER, GROQ_API_KEY, GROQ_VISION_MODEL, MODEL_NAME
 from forge.forge_engine import forge_engine
 from memory import vector_memory
 from memory.chat_history import DB_PATH as CHAT_HISTORY_DB_PATH, clear_history, get_all_sessions, get_history, save_message
@@ -1058,9 +1058,10 @@ def _build_vision_chat_payload(
 ) -> dict[str, Any]:
     provider_result: dict[str, Any] = {}
     error_message: Optional[str] = None
+    vision_provider = DEFAULT_REASONING_PROVIDER
     try:
         provider_result = generate_with_provider(
-            "groq",
+            vision_provider,
             [{"role": "user", "content": raw_message}],
             max_tokens=4096,
             temperature=0.2,
@@ -1071,7 +1072,7 @@ def _build_vision_chat_payload(
         error_message = str(error)
         reply = (
             "I received the image, but the vision provider failed before it could describe it. "
-            "Check your Groq key and vision model setting, then try the same image again."
+            f"Check your {vision_provider} key and vision model setting, then try the same image again."
         )
         success = False
 
@@ -2027,32 +2028,17 @@ async def chat(command: Command):
     vision_payload = extract_vision_payload(command.text)
     if vision_payload is not None:
         try:
-            vision_prompt, vision_url = vision_payload
-            print("[DISPATCHER] Vision detected. Calling SambaNova directly.")
-            
-            # 1. Initialize SambaNova OpenAI Client
-            client = OpenAI(
-                api_key=os.environ.get("SAMBANOVA_API_KEY"),
-                base_url="https://api.sambanova.ai/v1"
-            )
-
-            # 2. Call SambaNova's Llama Vision Model
-            response = client.chat.completions.create(
-                model="Llama-3.2-11B-Vision-Instruct",  # SambaNova's ultra-fast vision model
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": vision_prompt},
-                            {"type": "image_url", "image_url": {"url": vision_url}},
-                        ],
-                    }
-                ],
-                max_tokens=4096,  # Bumped up safely for larger vision outputs
+            vision_provider = DEFAULT_REASONING_PROVIDER
+            print(f"[DISPATCHER] Vision detected. Routing to {vision_provider}.")
+            provider_result = generate_with_provider(
+                vision_provider,
+                [{"role": "user", "content": command.text}],
+                max_tokens=4096,
                 temperature=0.7,
             )
-            vision_response = str(response.choices[0].message.content or "").strip()
-
+            vision_response = clean_response(provider_result.get("text")) or (
+                "I received the image, but the vision provider returned no description."
+            )
             return {
                 "intent": "vision",
                 "detected_intent": "vision",
@@ -2060,11 +2046,11 @@ async def chat(command: Command):
                 "response": vision_response,
                 "username": command.username,
                 "plan": [],
-                "used_agents": ["sambanova_vision"],  # Updated log name
+                "used_agents": [f"{vision_provider}_vision"],
                 "execution_mode": "vision_bypass",
             }
         except Exception as e:
-            print(f"[ERROR] Direct Vision engine failed: {e}")
+            print(f"[ERROR] Vision engine failed: {e}")
 
     pollinations_bypass = _try_pollinations_image_bypass(command.text)
     if pollinations_bypass and pollinations_bypass.get("image_url"):
@@ -3745,7 +3731,9 @@ async def system_status(request: Request):
 @app.get("/api/agents")
 async def get_agents():
     return {
-        "agents": list_agents(),
+        # Placeholder agents are quarantined under agents/experimental and are
+        # excluded from the catalog so the UI only advertises real/hybrid agents.
+        "agents": list_agents(include_placeholders=False),
         "generated_agents": list_generated_agent_cards(),
         "providers": summarize_provider_statuses(fresh=False),
         "summary": get_agent_summary(),

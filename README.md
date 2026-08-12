@@ -49,9 +49,9 @@ The project has a broad automated test suite; the current full local run reports
 - Browser push-to-talk and desktop voice runtime scaffolding.
 - Trust model for safe, private, sensitive, and critical actions.
 
-## Providers: SambaNova Engine
+## Providers: Groq Primary, SambaNova Ready
 
-The core routing engine has been migrated to SambaNova to bypass previous TPM (tokens-per-minute) rate limits, allowing large, uninterrupted 4096-token outputs.
+Groq is the live primary provider (it is the configured key in local development). The engine is also fully wired for SambaNova — to bypass TPM (tokens-per-minute) rate limits with large, uninterrupted 4096-token outputs — and SambaNova automatically takes routing priority (text and vision) the moment `SAMBANOVA_API_KEY` is present in `.env`.
 
 - **Text Engine:** `Meta-Llama-3.3-70B-Instruct`
 - **Vision Engine:** `Llama-3.2-11B-Vision-Instruct`
@@ -149,15 +149,15 @@ Critical actions must remain blocked or require a stronger verification flow. VO
 Prerequisites:
 
 - Windows is the primary development target.
-- Python 3.12 recommended (3.10+ minimum).
+- Python 3.10+ (3.11 and 3.12 are both fine; the current dev venv runs 3.11).
 - Node.js for JavaScript syntax checks.
 - Optional local dependencies for voice, OCR, DOCX/PDF/PPTX export, and automation.
 
 Create and activate a virtual environment:
 
 ```powershell
-# Force Python 3.12 virtual environment creation
-py -3.12 -m venv venv
+# Create the virtual environment (use py -3.11 or py -3.12 as available)
+py -3 -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```

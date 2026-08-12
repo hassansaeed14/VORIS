@@ -483,13 +483,20 @@ def _build_blueprint(module_path: str | Path) -> AgentBlueprint:
 def discover_generated_agent_blueprints() -> List[AgentBlueprint]:
     base = PROJECT_ROOT / "agents"
     blueprints: List[AgentBlueprint] = []
-    for category_dir in sorted(base.iterdir()):
-        if not category_dir.is_dir() or category_dir.name not in GENERATED_AGENT_DIRECTORIES:
+    # Placeholder/thin-wrapper categories live under agents/experimental (quarantine);
+    # they are still discovered so the registry can label them truthfully, but they
+    # remain excluded from chat routing and the advertised catalog.
+    scan_roots = [base, base / "experimental"]
+    for root in scan_roots:
+        if not root.is_dir():
             continue
-        for file_path in sorted(category_dir.glob("*.py")):
-            if file_path.name == "__init__.py":
+        for category_dir in sorted(root.iterdir()):
+            if not category_dir.is_dir() or category_dir.name not in GENERATED_AGENT_DIRECTORIES:
                 continue
-            blueprints.append(_build_blueprint(file_path))
+            for file_path in sorted(category_dir.glob("*.py")):
+                if file_path.name == "__init__.py":
+                    continue
+                blueprints.append(_build_blueprint(file_path))
     return blueprints
 
 
