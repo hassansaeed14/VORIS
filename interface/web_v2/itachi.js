@@ -121,6 +121,10 @@
   input.type = "text";
   input.className = "itachi-face__input";
   input.placeholder = "Speak to him…";
+  /* id + name: without them Chrome raises "A form field element should have
+     an id or name attribute", and autofill/AT have nothing to key off. */
+  input.id = "itachiFaceInput";
+  input.name = "itachiFaceMessage";
   input.setAttribute("aria-label", "Message VORIS");
   input.autocomplete = "off";
 
@@ -344,7 +348,10 @@
       const body =
         row.querySelector(".message__body, .message-card__content, .message__card") ||
         row;
-      const text = (body.textContent || "").trim();
+      /* innerText respects rendered line breaks between block elements;
+         textContent would run them together ("…first?Chat, documents…"). */
+      const raw = body.innerText || body.textContent || "";
+      const text = raw.replace(/\s+/g, " ").trim();
       if (text) return text;
     }
     return "";
@@ -450,14 +457,23 @@
 
   function bindTriggers() {
     const sel = "#vorisOrb, #orbStage, .orb-wrapper, #assistantOrb, .voris-orb";
-    const seen = new Set();
-    document.querySelectorAll(sel).forEach((el) => {
-      if (seen.has(el)) return;
-      seen.add(el);
+    const all = Array.from(document.querySelectorAll(sel));
+
+    /* These selectors nest — .voris-orb lives inside .orb-wrapper — and
+       promoting both to role=button produces a button inside a button:
+       invalid ARIA, confusing to screen readers, and a double-fired click.
+       Keep only the outermost match of each cluster. */
+    const outermost = all.filter(
+      (el) => !all.some((other) => other !== el && other.contains(el))
+    );
+
+    outermost.forEach((el) => {
+      if (el.dataset.itachiDoor) return;
+      el.dataset.itachiDoor = "1";
       el.classList.add("itachi-door");
       el.setAttribute("role", "button");
       el.setAttribute("tabindex", "0");
-      el.setAttribute("title", "Speak with him face to face");
+      el.setAttribute("aria-label", "Speak with VORIS face to face");
       el.addEventListener("click", openFace);
       el.addEventListener("keydown", (e) => {
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openFace(); }

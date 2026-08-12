@@ -25,9 +25,24 @@
 /* ─────────────────────── the orb is the door ─────────────────────── */
 
 .itachi-door {
+  position: relative;
   cursor: pointer;
   transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
               filter 320ms ease;
+}
+
+/* The orb renders at 40x40, under the 48x48 minimum tap target. Rather than
+   resizing it (which would alter a design that isn't mine to change), extend
+   the hit area to 48x48 with a centred, invisible pseudo-element. The visual
+   is untouched; only the clickable region grows. */
+.itachi-door::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 48px);
+  height: max(100%, 48px);
+  transform: translate(-50%, -50%);
 }
 
 .itachi-door:hover,

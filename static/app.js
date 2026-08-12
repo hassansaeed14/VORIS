@@ -684,7 +684,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function checkBackendHealth() {
     try {
-      const response = await fetch("http://localhost:8000/ping");
+      const response = await fetch("/ping");
       const data = await response.json();
 
       if (response.ok && data.status === "online") {
