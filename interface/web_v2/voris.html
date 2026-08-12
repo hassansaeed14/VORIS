@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -6,148 +6,16 @@
   <title>VORIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Shippori+Mincho:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static-v2/styles.css">
+  <!-- Itachi presence layer. Loaded after styles.css so its scoped rules win.
+       Remove this link + the itachi.js tag below to fully disable the skin. -->
+  <link rel="stylesheet" href="/static-v2/itachi.css">
 </head>
 <body class="voris-page" data-assistant-state="idle" data-orb-layout="topbar" data-task-scope="none">
   <div class="page-backdrop" aria-hidden="true"></div>
   <div class="page-grid" aria-hidden="true"></div>
   <div class="page-ambient" aria-hidden="true"></div>
-
-  <div class="app-shell">
-    <aside class="sidebar" aria-label="VORIS sidebar">
-      <div class="sidebar__brand">
-        <p class="eyebrow">Personal AI workspace</p>
-        <h1>VORIS</h1>
-        <p class="sidebar__state" id="sidebarState">Ready</p>
-      </div>
-
-      <button class="primary-action" id="newChatButton" type="button" aria-label="Start new chat">
-        <span class="primary-action__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"></path></svg>
-        </span>
-        <span>New chat</span>
-      </button>
-
-      <label class="search-field" for="chatSearch">
-        <input id="chatSearch" type="search" placeholder="Search chats">
-      </label>
-
-      <section class="sidebar__section">
-        <div class="sidebar__section-head">
-          <p class="sidebar__section-title">Chat history</p>
-        </div>
-        <div class="session-list" id="chatList" role="list"></div>
-      </section>
-    </aside>
-
-    <section class="workspace">
-      <div class="workspace__scroll-container">
-        
-        <header class="topbar">
-          <button class="sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Toggle Sidebar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
-          <div class="topbar__headline">
-            <h2>VORIS</h2>
-            <span class="access-chip" id="accessChip">Authenticated</span>
-          </div>
-        </header>
-
-        <main class="chat-stage">
-          <div class="chat-scroll" id="chatScroll">
-            <section class="conversation-thread" id="conversationThread" aria-live="polite"></section>
-          </div>
-        </main>
-      </div>
-
-      <form class="composer" id="composerForm">
-        <div class="composer__main-input-row">
-          
-          <button class="mic-visual-btn" type="button" aria-label="Toggle Voice Mode" onclick="document.getElementById('speechToggleButton').click()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
-              <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
-              <line x1="12" y1="19" x2="12" y2="22"></line>
-            </svg>
-          </button>
-<button type="button" id="legacy-upload-btn" class="mic-visual-btn" aria-label="Upload File" style="margin-right: 10px; cursor: pointer; background: transparent; border: none; color: inherit; padding: 5px;" onclick="document.getElementById('legacy-file-upload-input').click()">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19"></line>
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-  </svg>
-</button>
-<input type="file" id="legacy-file-upload-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt,.csv" />
-          <label class="composer__input-shell" for="messageInput">
-            <textarea id="messageInput" rows="1" placeholder="Message VORIS..."></textarea>
-          </label>
-          
-          <button class="send-button" id="sendButton" type="submit">
-            <span class="send-button__text">Send</span>
-          </button>
-        </div>
-        
-        <div style="display:none;">
-          <button id="speechToggleButton" type="button" aria-pressed="false"></button>
-          <button id="talkButton"></button>
-          <button id="desktopVoiceButton"></button>
-          <button id="interruptButton"></button>
-          <p id="voiceTranscript"></p>
-          <p id="composerStatus"></p>
-        </div>
-      </form>
-    </section>
-  </div>
-
-  <script src="/static-v2/app.js"></script>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // 1. SIDEBAR TOGGLE LOGIC
-      const toggleBtn = document.getElementById('sidebarToggle');
-      const appShell = document.querySelector('.app-shell');
-      if (toggleBtn && appShell) {
-        toggleBtn.addEventListener('click', () => {
-          appShell.classList.toggle('sidebar-collapsed');
-        });
-      }
-
-      // 2. SMART HEADER GLIDE LOGIC
-      const chatScroll = document.getElementById('chatScroll');
-      const topbar = document.querySelector('.topbar');
-      let lastScrollTop = 0;
-
-      if (chatScroll && topbar) {
-        chatScroll.addEventListener('scroll', () => {
-          let scrollTop = chatScroll.scrollTop;
-          
-          // If scrolling down and passed the header height, glide it up
-          if (scrollTop > lastScrollTop && scrollTop > 60) {
-            topbar.classList.add('topbar--hidden');
-          } 
-          // If scrolling up, glide it back down instantly
-          else {
-            topbar.classList.remove('topbar--hidden');
-          }
-          
-          lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
-        });
-      }
-    });
-  </script>
-
-  <section class="presence-stage" id="presenceStage" hidden aria-live="polite">
-    <div class="presence-stage__glow" aria-hidden="true"></div>
-    <div class="presence-stage__card">
-      <p class="eyebrow" id="presenceEyebrow">VORIS presence</p>
-      <h3 id="presenceTitle">VORIS is here.</h3>
-      <p id="presenceText">Calm, present, and ready when you are.</p>
-    </div>
-  </section>
 
   <div class="app-shell">
     <aside class="sidebar" aria-label="VORIS sidebar">
@@ -202,6 +70,14 @@
 
     <section class="workspace">
       <header class="topbar">
+        <button class="sidebar-toggle-btn" id="sidebarToggle" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+
         <div class="topbar__copy">
           <p class="eyebrow">Voice-Oriented Responsive Intelligence System</p>
           <div class="topbar__headline">
@@ -235,71 +111,42 @@
             <section class="conversation-thread" id="conversationThread" aria-live="polite"></section>
           </div>
 
-         <form class="composer" id="composerForm">
-  <div class="composer__status-row">
-    <p class="composer__status" id="composerStatus">Message VORIS. Talk is beta when available.</p>
-  </div>
-
-  <p class="composer__transcript" id="voiceTranscript" hidden></p>
-
-  <div class="composer__main-input-row">
-    <button class="upload-button" id="uploadButton" type="button" aria-label="Attach file" title="Attach file">
-      <span aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 5v14"></path>
-          <path d="M5 12h14"></path>
-        </svg>
-      </span>
-    </button>
-    <input type="file" id="file-upload-input" class="file-upload-input" accept="image/*,.pdf,.doc,.docx,.txt,.csv" />
-
-    <label class="composer__input-shell" for="messageInput">
-      <textarea id="messageInput" rows=".1" placeholder="Message VORIS..."></textarea>
-    </label>
-    
-    <button class="send-button" id="sendButton" type="submit" aria-label="Send message" title="Send message">
-      <span class="send-button__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M5 12h13"></path>
-          <path d="m13 6 6 6-6 6"></path>
-        </svg>
-      </span>
-      <span class="send-button__text">Send</span>
-    </button>
-  </div>
-
-  <div class="composer__utility-tray">
-    <button class="tool-button" id="talkButton" type="button" hidden>
-      <span>Talk</span>
-      <span class="tool-badge">Beta</span>
-    </button>
-
-    <button class="tool-button tool-button--speech" id="speechToggleButton" type="button" aria-pressed="false">
-      <span class="tool-button__label">Speech off</span>
-    </button>
-
-    <button class="tool-button tool-button--desktop-voice" id="desktopVoiceButton" type="button" aria-pressed="false">
-      <span class="tool-button__label">Enable desktop voice</span>
-    </button>
-
-    <button class="tool-button tool-button--interrupt" id="interruptButton" type="button" hidden aria-label="Interrupt VORIS">
-      <span>Stop</span>
-    </button>
-  </div>
-</form>
+          <form class="composer" id="composerForm">
+            <div class="composer__status-row">
+              <p class="composer__status" id="composerStatus">Message VORIS. Talk is beta when available.</p>
+            </div>
 
             <p class="composer__transcript" id="voiceTranscript" hidden></p>
 
-            <div class="composer__row">
-              <button class="tool-button" id="talkButton" type="button" hidden>
+            <div class="composer__main-input-row">
+              <button class="upload-button" id="uploadButton" type="button" aria-label="Attach file" title="Attach file">
                 <span aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <rect x="9" y="3" width="6" height="12" rx="3"></rect>
-                    <path d="M5 11a7 7 0 0 0 14 0"></path>
-                    <path d="M12 18v3"></path>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
                   </svg>
                 </span>
-                <span class="tool-button__label">Talk</span>
+              </button>
+              <input type="file" id="file-upload-input" class="file-upload-input" accept="image/*,.pdf,.doc,.docx,.txt,.csv" />
+
+              <label class="composer__input-shell" for="messageInput">
+                <textarea id="messageInput" rows="1" placeholder="Message VORIS..."></textarea>
+              </label>
+
+              <button class="send-button" id="sendButton" type="submit" aria-label="Send message" title="Send message">
+                <span class="send-button__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h13"></path>
+                    <path d="m13 6 6 6-6 6"></path>
+                  </svg>
+                </span>
+                <span class="send-button__text">Send</span>
+              </button>
+            </div>
+
+            <div class="composer__utility-tray">
+              <button class="tool-button" id="talkButton" type="button" hidden>
+                <span>Talk</span>
                 <span class="tool-badge">Beta</span>
               </button>
 
@@ -312,26 +159,7 @@
               </button>
 
               <button class="tool-button tool-button--interrupt" id="interruptButton" type="button" hidden aria-label="Interrupt VORIS">
-                <span aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <rect x="6" y="6" width="12" height="12" rx="2"></rect>
-                  </svg>
-                </span>
                 <span>Stop</span>
-              </button>
-
-              <label class="composer__input-shell" for="messageInput">
-                <textarea id="messageInput" rows="1" placeholder="Message VORIS"></textarea>
-              </label>
-
-              <button class="send-button" id="sendButton" type="submit" aria-label="Send message" title="Send message">
-                <span class="send-button__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h13"></path>
-                    <path d="m13 6 6 6-6 6"></path>
-                  </svg>
-                </span>
-                <span class="send-button__text">Send</span>
               </button>
             </div>
           </form>
@@ -359,6 +187,49 @@
     </section>
   </div>
 
+  <section class="presence-stage" id="presenceStage" hidden aria-live="polite">
+    <div class="presence-stage__glow" aria-hidden="true"></div>
+    <div class="presence-stage__card">
+      <p class="eyebrow" id="presenceEyebrow">VORIS presence</p>
+      <h3 id="presenceTitle">VORIS is here.</h3>
+      <p id="presenceText">Calm, present, and ready when you are.</p>
+    </div>
+  </section>
+
+  <!-- app.js is loaded exactly once. Loading it twice creates two IIFE
+       closures whose distinct handler references both bind to the same
+       elements, which sends every message twice. -->
   <script src="/static-v2/app.js"></script>
+  <script src="/static-v2/itachi.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Sidebar collapse
+      const toggleBtn = document.getElementById('sidebarToggle');
+      const appShell = document.querySelector('.app-shell');
+      if (toggleBtn && appShell) {
+        toggleBtn.addEventListener('click', () => {
+          appShell.classList.toggle('sidebar-collapsed');
+        });
+      }
+
+      // Topbar hides on scroll down, returns on scroll up
+      const chatScroll = document.getElementById('chatScroll');
+      const topbar = document.querySelector('.topbar');
+      let lastScrollTop = 0;
+
+      if (chatScroll && topbar) {
+        chatScroll.addEventListener('scroll', () => {
+          const scrollTop = chatScroll.scrollTop;
+          if (scrollTop > lastScrollTop && scrollTop > 60) {
+            topbar.classList.add('topbar--hidden');
+          } else {
+            topbar.classList.remove('topbar--hidden');
+          }
+          lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+        });
+      }
+    });
+  </script>
 </body>
 </html>
