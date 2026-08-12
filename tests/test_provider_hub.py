@@ -272,6 +272,7 @@ class ProviderHubTests(unittest.TestCase):
 
     def test_generate_with_best_provider_falls_back_to_gemini_when_groq_is_unavailable(self):
         statuses = {
+            "sambanova": provider_hub.ProviderStatus("sambanova", "Meta-Llama-3.3-70B-Instruct", "real", False, False, True, "not configured", status=provider_hub.STATUS_NOT_CONFIGURED),
             "groq": provider_hub.ProviderStatus("groq", "llama-3.3-70b-versatile", "real", True, False, True, "degraded", status=provider_hub.STATUS_DEGRADED),
             "gemini": provider_hub.ProviderStatus("gemini", "gemini-2.5-flash", "real", True, True, True, "healthy", status=provider_hub.STATUS_HEALTHY),
             "openai": provider_hub.ProviderStatus("openai", "gpt-4o-mini", "real", True, True, True, "healthy", status=provider_hub.STATUS_HEALTHY),
@@ -307,6 +308,7 @@ class ProviderHubTests(unittest.TestCase):
 
     def test_generate_with_best_provider_skips_rate_limited_primary_and_uses_groq(self):
         statuses = {
+            "sambanova": provider_hub.ProviderStatus("sambanova", "Meta-Llama-3.3-70B-Instruct", "real", False, False, True, "not configured", status=provider_hub.STATUS_NOT_CONFIGURED),
             "gemini": provider_hub.ProviderStatus("gemini", "gemini-2.5-flash", "real", True, False, True, "degraded", status=provider_hub.STATUS_DEGRADED),
             "openai": provider_hub.ProviderStatus("openai", "gpt-4o-mini", "real", True, False, True, "rate limited", status=provider_hub.STATUS_RATE_LIMITED),
             "groq": provider_hub.ProviderStatus("groq", "llama-3.3-70b-versatile", "real", True, True, True, "healthy", status=provider_hub.STATUS_HEALTHY),

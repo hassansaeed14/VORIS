@@ -1,6 +1,6 @@
 # VORIS
 
-Voice-Oriented Responsive Intelligence System — an Autonomous Universal Responsive Assistant.
+Voice-Oriented Responsive Intelligence System.
 
 VORIS is a local-first, JARVIS-style assistant prototype that combines chat, document generation, controlled desktop actions, voice scaffolding, memory, local file RAG, and a safety-first execution model.
 

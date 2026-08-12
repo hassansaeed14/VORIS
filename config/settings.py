@@ -8,7 +8,10 @@ load_dotenv()
 
 
 def _read_api_bundle() -> dict[str, str]:
-    bundle_path = Path(os.getenv("AURA_API_BUNDLE_PATH", r"C:\Users\beast\Downloads\API NAME OpenAI.txt"))
+    bundle_env = os.getenv("AURA_API_BUNDLE_PATH", "").strip()
+    if not bundle_env:
+        return {}
+    bundle_path = Path(bundle_env)
     if not bundle_path.exists():
         return {}
 
@@ -83,7 +86,7 @@ DEFAULT_REASONING_PROVIDER = os.getenv(
 
 PROVIDER_MODEL_MAP = {
     "groq": os.getenv("GROQ_MODEL", MODEL_NAME),
-    "sambanova": os.getenv("SAMBANOVA_MODEL", "Meta-Llama-3.1-405B-Instruct"),
+    "sambanova": os.getenv("SAMBANOVA_MODEL", "Meta-Llama-3.3-70B-Instruct"),
     "openai": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
     "claude": os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-0"),
     "gemini": os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
@@ -93,7 +96,7 @@ PROVIDER_MODEL_MAP = {
 
 PROVIDER_PRIORITY = tuple(
     item.strip().lower()
-    for item in os.getenv("AURA_PROVIDER_PRIORITY", "groq,gemini,openai,openrouter,claude,ollama").split(",")
+    for item in os.getenv("AURA_PROVIDER_PRIORITY", "sambanova,groq,gemini,openai,openrouter,claude,ollama").split(",")
     if item.strip()
 )
 

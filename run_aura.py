@@ -155,7 +155,8 @@ def wait_for_server(host: str, port: int, timeout: float = 12.0) -> bool:
 
 def is_port_available(host: str, port: int) -> bool:
     bind_host = "" if host in {"0.0.0.0", "::"} else host
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+    family = socket.AF_INET6 if (host == "::" or ":" in str(host)) else socket.AF_INET
+    with socket.socket(family, socket.SOCK_STREAM) as probe:
         try:
             probe.bind((bind_host, int(port)))
         except OSError:

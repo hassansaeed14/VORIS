@@ -880,7 +880,7 @@ def _build_pollinations_unavailable_payload(
             "or budget. Add credits or use another POLLINATIONS_API_KEY, then try again."
         )
     elif reason == "provider_failed":
-        print(f"IMAGE GENERATION ERROR: ")
+        print(f"IMAGE GENERATION ERROR: {error or 'Pollinations provider failed without details.'}")
         message = "Pollinations did not return an image this time. Please try again in a moment."
 
     return _attach_action_trace(
@@ -2066,9 +2066,97 @@ async def chat(command: Command):
         except Exception as e:
             print(f"[ERROR] Direct Vision engine failed: {e}")
 
-    # --- REST OF YOUR CODE (STAYS EXACTLY THE SAME) ---
     pollinations_bypass = _try_pollinations_image_bypass(command.text)
-    # ...
+    if pollinations_bypass and pollinations_bypass.get("image_url"):
+        return {
+            "intent": "image_generation",
+            "detected_intent": "image_generation",
+            "confidence": 1.0,
+            "response": pollinations_bypass["image_url"],
+            "image_url": pollinations_bypass["image_url"],
+            "username": command.username,
+            "plan": [],
+            "used_agents": ["pollinations"],
+            "execution_mode": "image_bypass",
+        }
+    if pollinations_bypass:
+        return {
+            "intent": "image_generation",
+            "detected_intent": "image_generation",
+            "confidence": 1.0,
+            "response": "Image generation is unavailable right now.",
+            "username": command.username,
+            "plan": [],
+            "used_agents": [],
+            "execution_mode": "image_unavailable",
+            "error": pollinations_bypass.get("error"),
+        }
+
+    try:
+        result = process_command_detailed(command.text)
+        response = result["response"]
+
+        legacy_context = {
+            "session_id": _normalize_session_id(command.username or "default"),
+            "raw_message": command.text,
+            "requested_mode": "hybrid",
+        }
+        history_status = _attempt_persist_chat_turn(
+            legacy_context,
+            response,
+            result.get("detected_intent") or result.get("intent") or "general",
+            (result.get("used_agents") or [None])[0],
+            result.get("execution_mode") or "hybrid",
+        )
+
+        response_payload = {
+            "intent": result["intent"],
+            "detected_intent": result["detected_intent"],
+            "confidence": round(result["confidence"], 2),
+            "response": response,
+            "username": command.username,
+            "plan": result.get("plan", []),
+            "used_agents": result.get("used_agents", []),
+            "agent_capabilities": result.get("agent_capabilities", []),
+            "execution_mode": result.get("execution_mode"),
+            "decision": result.get("decision", {}),
+            "orchestration": result.get("orchestration", {}),
+            "permission_action": result.get("permission_action"),
+            "permission": result.get("permission", {}),
+            "history_status": history_status,
+        }
+        _attach_action_trace(
+            response_payload,
+            request_id=request_id,
+            raw_input=command.text,
+            final_status="ok",
+        )
+        return response_payload
+
+    except Exception as e:
+        response_payload = {
+            "intent": "error",
+            "detected_intent": "error",
+            "confidence": 0.0,
+            "response": f"Sorry, I encountered an error: {str(e)}",
+            "username": command.username,
+            "plan": [],
+            "used_agents": [],
+            "agent_capabilities": [],
+            "execution_mode": "error",
+            "decision": {},
+            "orchestration": {},
+            "permission_action": None,
+            "permission": {},
+        }
+        _attach_action_trace(
+            response_payload,
+            request_id=request_id,
+            raw_input=command.text,
+            final_status="error",
+        )
+        return response_payload
+
 
 @app.post("/api/chat")
 async def api_chat(payload: ChatApiRequest, request: Request):
@@ -3766,38 +3854,6 @@ async def get_modes():
         "items": list_system_modes(),
     }
 
-    if False:  # Legacy static catalog kept only as migration reference.
-        return {
-        "agents": [
-            {"id": "general", "name": "General VORIS", "icon": "🤖", "description": "General AI assistant"},
-            {"id": "study", "name": "Study Agent", "icon": "📚", "description": "Learn any topic"},
-            {"id": "research", "name": "Research Agent", "icon": "🔍", "description": "Deep research"},
-            {"id": "code", "name": "Coding Agent", "icon": "💻", "description": "Programming help"},
-            {"id": "weather", "name": "Weather Agent", "icon": "🌤️", "description": "Weather info"},
-            {"id": "news", "name": "News Agent", "icon": "📰", "description": "Latest news"},
-            {"id": "math", "name": "Math Agent", "icon": "🧮", "description": "Math solver"},
-            {"id": "translation", "name": "Translation Agent", "icon": "🌍", "description": "Translate languages"},
-            {"id": "email", "name": "Email Writer", "icon": "📧", "description": "Write emails"},
-            {"id": "content", "name": "Content Writer", "icon": "✍️", "description": "Write content"},
-            {"id": "summarize", "name": "Summarizer", "icon": "📝", "description": "Summarize text"},
-            {"id": "grammar", "name": "Grammar Check", "icon": "✅", "description": "Fix grammar"},
-            {"id": "quiz", "name": "Quiz Agent", "icon": "🎯", "description": "Generate quizzes"},
-            {"id": "joke", "name": "Joke Agent", "icon": "😄", "description": "Tell jokes"},
-            {"id": "quote", "name": "Quote Agent", "icon": "💭", "description": "Inspiring quotes"},
-            {"id": "password", "name": "Password Agent", "icon": "🔐", "description": "Generate passwords"},
-            {"id": "task", "name": "Task Manager", "icon": "📋", "description": "Manage tasks"},
-            {"id": "reminder", "name": "Reminder Agent", "icon": "⏰", "description": "Set reminders"},
-            {"id": "resume", "name": "Resume Builder", "icon": "📄", "description": "Build resume"},
-            {"id": "currency", "name": "Currency Agent", "icon": "💱", "description": "Convert currency"},
-            {"id": "dictionary", "name": "Dictionary", "icon": "📖", "description": "Define words"},
-            {"id": "youtube", "name": "YouTube Agent", "icon": "▶️", "description": "YouTube search"},
-            {"id": "web_search", "name": "Web Search", "icon": "🌐", "description": "Search web"},
-            {"id": "file", "name": "File Agent", "icon": "📁", "description": "Read files"},
-            {"id": "screenshot", "name": "Screenshot", "icon": "📸", "description": "Take screenshots"},
-            {"id": "fitness", "name": "Fitness Agent", "icon": "💪", "description": "Workout and fitness plans"}
-        ]
-    }
-
 
 @app.post("/api/agents/run/{agent_id}")
 async def run_agent_endpoint(agent_id: str, payload: AgentRunRequest, request: Request):
@@ -3996,7 +4052,7 @@ async def verify_otp_endpoint(payload: OtpVerifyBody, request: Request):
     return result
 
 
-@app.get("/api/security/status")
+@app.get("/api/security/dashboard")
 async def security_status_endpoint(request: Request, limit: int = 25):
     """Operator dashboard: recent blocks / approvals / OTP / PIN lockouts."""
 

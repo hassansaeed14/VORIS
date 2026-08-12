@@ -4,7 +4,7 @@ Report date: 2026-05-08
 
 ## 1. Project Overview
 
-VORIS stands for Autonomous Universal Responsive Assistant. It is a local-first AI assistant prototype designed to combine conversation, document generation, memory, controlled actions, voice, screen awareness, and security into one coherent assistant runtime.
+VORIS stands for Voice-Oriented Responsive Intelligence System. It is a local-first AI assistant prototype designed to combine conversation, document generation, memory, controlled actions, voice, screen awareness, and security into one coherent assistant runtime.
 
 VORIS is currently a serious Level 3 / early Level 4 JARVIS-style assistant prototype. It is not a complete production assistant and it is not Level 5 real JARVIS.
 

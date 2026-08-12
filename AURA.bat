@@ -11,9 +11,9 @@ cd /d "%ROOT%"
 echo.
 echo  ╔══════════════════════════════════════════════╗
 echo  ║                                              ║
-echo  ║        A  U  R  A                           ║
-echo  ║        Autonomous Universal                  ║
-echo  ║        Responsive Assistant                  ║
+echo  ║        V  O  R  I  S                        ║
+echo  ║        Voice-Oriented Responsive             ║
+echo  ║        Intelligence System                   ║
 echo  ║                                              ║
 echo  ╚══════════════════════════════════════════════╝
 echo.

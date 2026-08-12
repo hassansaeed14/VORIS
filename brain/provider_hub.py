@@ -635,7 +635,7 @@ class ProviderHub:
                 processed_messages.append(
                     {
                         "role": str(msg.get("role") or "user"),
-                        "content": content[:2000] + "\n[Text Truncated]",
+                        "content": content[:15000] + "\n[Text Truncated]",
                     }
                 )
             else:
@@ -649,7 +649,10 @@ class ProviderHub:
                 temperature=temperature,
             )
             raw_text = str(response.choices[0].message.content or "")
-            return raw_text.replace("<|endheaderid|>", "").replace("assistant", "").strip()
+            # Strip leaked role-header tokens without touching legitimate content.
+            raw_text = re.sub(r"<\|[^|>]{1,40}\|>", "", raw_text)
+            raw_text = re.sub(r"^\s*assistant\s*[:\n]", "", raw_text, count=1, flags=re.IGNORECASE)
+            return raw_text.strip()
         except Exception as e:
             print(f"[CRITICAL API ERROR] {e}")
             raise e
