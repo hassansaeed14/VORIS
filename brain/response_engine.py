@@ -7,9 +7,9 @@ from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 from config.settings import (
-    AURA_PERSONALITY,
     DEFAULT_REASONING_PROVIDER,
     GROQ_API_KEY,
+    VORIS_PERSONALITY,
 )
 from brain.provider_hub import (
     STATUS_HEALTHY,
@@ -375,7 +375,7 @@ def build_system_prompt(language: str, system_override: Optional[str] = None) ->
 
     if language == "urdu":
         return (
-            f"{AURA_PERSONALITY} "
+            f"{VORIS_PERSONALITY} "
             "Agar user Urdu mein baat kare to Urdu mein jawab dein. "
             "Jawab saaf, fitri, aur mohtaat andaaz mein dein. "
             "Sawal asaan ho to mukhtasar jawab dein, aur mushkil sawal ho to tafseeli jawab dein. "
@@ -636,7 +636,7 @@ EXTERNAL_FACT_PATTERNS = (
     r"\bregulation(?:s)?\b",
     r"\bversion\b",
 )
-AURA_CONTEXT_PATTERNS = (
+VORIS_CONTEXT_PATTERNS = (
     r"\bvoris\b",
     r"\baura\b",
     r"\bthis project\b",
@@ -678,7 +678,7 @@ def classify_critical_question(user_input: str) -> Dict[str, Any]:
     high_risk_domains = sorted(set(domains) & HIGH_RISK_CRITICAL_DOMAINS)
     reasoning_signal = _matches_any_pattern(normalized, CRITICAL_REASONING_PATTERNS)
     external_facts = _matches_any_pattern(normalized, EXTERNAL_FACT_PATTERNS)
-    project_context = _matches_any_pattern(normalized, AURA_CONTEXT_PATTERNS)
+    project_context = _matches_any_pattern(normalized, VORIS_CONTEXT_PATTERNS)
     complex_prompt = len(words) >= 16 or reasoning_signal
     technical_complexity = "technical" in domains and (
         complex_prompt or bool({"architecture", "security", "safety"} & set(domains))
@@ -741,7 +741,7 @@ def classify_critical_question(user_input: str) -> Dict[str, Any]:
     }
 
 
-def _load_aura_project_context(max_chars: int = 3600) -> str:
+def _load_voris_project_context(max_chars: int = 3600) -> str:
     candidates = (
         "SYSTEM_AUDIT.md",
         "MASTER_SPEC.md",
@@ -804,7 +804,7 @@ def build_critical_reasoning_system_prompt(system_prompt: str, profile: Dict[str
 def _append_project_context_if_needed(system_prompt: str, profile: Dict[str, Any]) -> tuple[str, bool]:
     if not profile.get("needs_project_context"):
         return system_prompt, False
-    context = _load_aura_project_context()
+    context = _load_voris_project_context()
     if not context:
         return (
             f"{system_prompt}\n\nVORIS PROJECT CONTEXT:\nNo project context file was available to load. State that limitation if needed.",

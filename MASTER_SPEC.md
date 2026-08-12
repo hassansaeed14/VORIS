@@ -49,7 +49,7 @@ Use tests, logs, audits, and demo feedback to harden real behavior.
 
 ## Architecture
 
-- `run_aura.py` - supported launcher.
+- `run_voris.py` - supported launcher.
 - `api/api_server.py` - live API and web serving.
 - `brain/runtime_core.py` - core routing and execution.
 - `brain/response_engine.py` - response shaping and document flow.

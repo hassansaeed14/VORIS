@@ -1204,7 +1204,7 @@ class DocumentAccessAndRateLimitTests(unittest.TestCase):
             payload = response.json()
             self.assertEqual(payload["access_scope"], "browser_session")
             self.assertIn("access=", payload["download_url"])
-            self.assertIn("aura_local_session", self.client.cookies)
+            self.assertIn("voris_local_session", self.client.cookies)
 
             allowed = self.client.get(payload["download_url"])
             self.assertEqual(allowed.status_code, 200)

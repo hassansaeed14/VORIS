@@ -5,7 +5,7 @@
 Supported launcher:
 
 ```text
-run_aura.py
+run_voris.py
 ```
 
 Live API:

@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 import brain.response_engine as response_engine_module
 from agents.agent_bus import agent_bus
 from agents.agent_registry import AgentRegistry
-from agents.context import AURAContext
+from agents.context import VORISContext
 from brain import runtime_core as runtime_core_module
 from brain.response_engine import FALLBACK_USER_MESSAGE, build_degraded_reply, clean_response, generate_response, generate_response_payload
 from config.settings import GROQ_API_KEY, MODEL_NAME
@@ -235,9 +235,9 @@ def _build_reasoning_trace(result: dict[str, Any], elapsed_ms: float) -> dict[st
     }
 
 
-def _build_context(session_id: str, user_profile: Optional[dict[str, Any]] = None, current_mode: str = "hybrid") -> AURAContext:
+def _build_context(session_id: str, user_profile: Optional[dict[str, Any]] = None, current_mode: str = "hybrid") -> VORISContext:
     user_profile = dict(user_profile or {})
-    return AURAContext(
+    return VORISContext(
         user_id=str(user_profile.get("id") or user_profile.get("username") or "guest"),
         session_id=session_id,
         current_mode=current_mode,

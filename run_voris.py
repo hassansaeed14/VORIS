@@ -3,7 +3,7 @@ from __future__ import annotations
 """Supported VORIS desktop/web launcher.
 
 This is the runtime source of truth for the current VORIS build:
-``run_aura.py`` serves ``api.api_server:app`` through Waitress. Legacy entry
+``run_voris.py`` serves ``api.api_server:app`` through Waitress. Legacy entry
 points such as ``main.py`` are not used for the web_v2/FastAPI runtime.
 """
 
@@ -184,7 +184,7 @@ def print_boot_banner(url: str, config: dict[str, Any]) -> None:
     safe_print()
     safe_print("[System Status]")
     safe_print("Runtime       : FastAPI + Waitress")
-    safe_print("Entry point   : run_aura.py")
+    safe_print("Entry point   : run_voris.py")
     safe_print("API source    : api.api_server:app")
     safe_print("Mode          : Local Private Runtime")
     safe_print(f"Workers       : {config.get('workers')}")

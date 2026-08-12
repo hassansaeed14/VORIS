@@ -44,7 +44,7 @@ Most assistant projects either answer text only or fake system control through U
 ## 5. Architecture
 
 ```text
-run_aura.py
+run_voris.py
   -> api/api_server.py
   -> brain/runtime_core.py
   -> security + memory + providers + tools + voice

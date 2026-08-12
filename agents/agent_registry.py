@@ -5,12 +5,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from agents.context import AURAContext
+from agents.context import VORISContext
 from agents.agent_bus import agent_bus
 from agents.registry import get_agent_descriptor, list_agents
 
 
-AgentHandler = Callable[[str, AURAContext], Any]
+AgentHandler = Callable[[str, VORISContext], Any]
 
 
 @dataclass(slots=True)
@@ -19,7 +19,7 @@ class RegisteredAgent:
     handler: AgentHandler
     metadata: dict[str, Any] = field(default_factory=dict)
 
-    def handle(self, task: str, context: AURAContext) -> Any:
+    def handle(self, task: str, context: VORISContext) -> Any:
         return self.handler(task, context)
 
 
@@ -48,16 +48,16 @@ class AgentRegistry:
         self._ensure_bootstrap()
         return sorted(self._agents.keys())
 
-    def call(self, agent_name: str, task: str, context: AURAContext | dict[str, Any] | None = None) -> Any:
+    def call(self, agent_name: str, task: str, context: VORISContext | dict[str, Any] | None = None) -> Any:
         self._ensure_bootstrap()
         agent = self.get(agent_name)
         if agent is None:
             raise KeyError(f"Unknown agent: {agent_name}")
 
-        if isinstance(context, AURAContext):
+        if isinstance(context, VORISContext):
             aura_context = context
         else:
-            aura_context = AURAContext(**dict(context or {}))
+            aura_context = VORISContext(**dict(context or {}))
 
         aura_context.activate(str(agent_name or ""))
         if hasattr(agent, "handle"):
@@ -107,7 +107,7 @@ def _call_runtime_agent(agent_name: str, task: str) -> Any:
     return handler(task)
 
 
-def _call_generated_agent(agent_name: str, task: str, context: AURAContext) -> Any:
+def _call_generated_agent(agent_name: str, task: str, context: VORISContext) -> Any:
     from agents.agent_fabric import run_generated_agent
 
     result = run_generated_agent(
@@ -124,7 +124,7 @@ def _call_generated_agent(agent_name: str, task: str, context: AURAContext) -> A
     return result
 
 
-def _dynamic_module_callable(agent_name: str) -> Optional[Callable[[str, AURAContext], Any]]:
+def _dynamic_module_callable(agent_name: str) -> Optional[Callable[[str, VORISContext], Any]]:
     project_root = Path(__file__).resolve().parent
     for path in project_root.rglob(f"{agent_name}.py"):
         if path.name == "agent_registry.py":

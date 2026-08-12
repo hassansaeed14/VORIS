@@ -9,7 +9,13 @@ import bcrypt
 
 from security.access_control import AccessController
 from security.pin_manager import set_pin
-from security.security_config import AUTH_COOKIE_MAX_AGE_SECONDS, AUTH_COOKIE_NAME, AUTH_COOKIE_SAMESITE, USERS_FILE
+from security.security_config import (
+    AUTH_COOKIE_MAX_AGE_SECONDS,
+    AUTH_COOKIE_NAME,
+    AUTH_COOKIE_SAMESITE,
+    LEGACY_AUTH_COOKIE_NAMES,
+    USERS_FILE,
+)
 from security.session_manager import create_login_session, get_login_session, invalidate_login_session
 
 
@@ -231,8 +237,18 @@ def get_auth_state(username: str | None) -> Dict[str, object]:
     return {"authenticated": bool(user), "user": user}
 
 
+def read_session_token(request) -> Optional[str]:
+    """Return the auth session token, accepting pre-rename cookie names."""
+
+    for name in (AUTH_COOKIE_NAME, *LEGACY_AUTH_COOKIE_NAMES):
+        token = request.cookies.get(name)
+        if token:
+            return token
+    return None
+
+
 def get_request_user(request) -> Optional[Dict[str, Any]]:
-    token = request.cookies.get(AUTH_COOKIE_NAME)
+    token = read_session_token(request)
     if not token:
         return None
     session = get_login_session(token)
@@ -258,17 +274,18 @@ def set_session_cookie(response, session_token: str, *, secure: bool) -> None:
 
 
 def clear_session_cookie(response, *, secure: bool) -> None:
-    response.delete_cookie(
-        AUTH_COOKIE_NAME,
-        httponly=True,
-        secure=secure,
-        samesite=AUTH_COOKIE_SAMESITE,
-        path="/",
-    )
+    for name in (AUTH_COOKIE_NAME, *LEGACY_AUTH_COOKIE_NAMES):
+        response.delete_cookie(
+            name,
+            httponly=True,
+            secure=secure,
+            samesite=AUTH_COOKIE_SAMESITE,
+            path="/",
+        )
 
 
 def logout_request(request) -> None:
-    token = request.cookies.get(AUTH_COOKIE_NAME)
+    token = read_session_token(request)
     if token:
         invalidate_login_session(token)
 

@@ -7,7 +7,7 @@ Use this script for controlled teacher/demo presentations. Do not demo unsafe or
 1. Start VORIS:
 
 ```powershell
-python run_aura.py
+python run_voris.py
 ```
 
 2. Open:

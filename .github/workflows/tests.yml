@@ -29,7 +29,7 @@ jobs:
 
       - name: Syntax checks
         run: |
-          python -m py_compile run_aura.py api/api_server.py
+          python -m py_compile run_voris.py api/api_server.py
           node --check interface/web_v2/app.js
           node --check interface/web_v2/auth.js
 

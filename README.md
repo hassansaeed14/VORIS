@@ -26,7 +26,7 @@ Status: active local development and controlled demo readiness.
 
 The stable path is:
 
-`run_aura.py` -> FastAPI app in `api/api_server.py` -> runtime/brain/tools/security modules -> `interface/web_v2`
+`run_voris.py` -> FastAPI app in `api/api_server.py` -> runtime/brain/tools/security modules -> `interface/web_v2`
 
 The project has a broad automated test suite; the current full local run reports 314 passing tests.
 
@@ -89,7 +89,7 @@ User input
 
 Important paths:
 
-- `run_aura.py` - supported local launcher.
+- `run_voris.py` - supported local launcher.
 - `api/api_server.py` - live FastAPI API.
 - `brain/` - runtime orchestration, response quality, providers, traces.
 - `security/` - sessions, permissions, trust enforcement.
@@ -167,7 +167,7 @@ Create a local `.env` file only for your own machine (see Providers above). Do n
 ## Run
 
 ```powershell
-python run_aura.py
+python run_voris.py
 ```
 
 Then open:
@@ -185,7 +185,7 @@ python tools/health_check.py
 ## Test
 
 ```powershell
-python -m py_compile run_aura.py api\api_server.py
+python -m py_compile run_voris.py api\api_server.py
 node --check interface\web_v2\app.js
 node --check interface\web_v2\auth.js
 python -m unittest discover -s tests -p "test_*.py"

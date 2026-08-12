@@ -35,7 +35,7 @@ class ProductionHardeningTests(unittest.TestCase):
         self.assertIn("if (!state.auth?.authenticated) {\n      state.messages = [];", source)
 
     def test_launcher_quiets_waitress_queue_noise(self):
-        source = (ROOT / "run_aura.py").read_text(encoding="utf-8")
+        source = (ROOT / "run_voris.py").read_text(encoding="utf-8")
 
         self.assertIn('logging.getLogger("waitress.queue").setLevel(logging.ERROR)', source)
 

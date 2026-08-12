@@ -5,7 +5,7 @@ from typing import Any, List, Optional
 
 
 @dataclass(slots=True)
-class AURAContext:
+class VORISContext:
     user_id: str = "guest"
     session_id: str = "default"
     current_mode: str = "hybrid"
@@ -34,3 +34,7 @@ class AURAContext:
         )
         if len(self.conversation_history) > 20:
             del self.conversation_history[:-20]
+
+
+# Backward-compatible alias kept for pre-rename importers.
+AURAContext = VORISContext

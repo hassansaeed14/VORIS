@@ -20,7 +20,12 @@ AUDIT_LOG_FILE = MEMORY_DIR / "security_audit.jsonl"
 ACTION_APPROVAL_FILE = MEMORY_DIR / "session_approvals.json"
 OTP_VERIFIED_FILE = MEMORY_DIR / "otp_verified.json"
 
-AUTH_COOKIE_NAME = "aura_session"
+AUTH_COOKIE_NAME = "voris_session"
+# Cookies issued before the AURA -> VORIS rename. Read-only: still accepted so
+# existing logins survive the upgrade, but never issued again.
+LEGACY_AUTH_COOKIE_NAMES = ("aura_session",)
+LOCAL_SESSION_COOKIE_NAME = "voris_local_session"
+LEGACY_LOCAL_SESSION_COOKIE_NAMES = ("aura_local_session",)
 AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24
 AUTH_COOKIE_SAMESITE = "lax"
 

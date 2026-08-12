@@ -90,9 +90,14 @@ from security.auth_manager import (
     get_user as get_auth_user,
     is_admin_user,
     logout_request,
+    read_session_token,
     register_user as register_auth_user,
     requires_first_run_setup,
     set_session_cookie,
+)
+from security.security_config import (
+    LEGACY_LOCAL_SESSION_COOKIE_NAMES,
+    LOCAL_SESSION_COOKIE_NAME,
 )
 from security.audit_logger import tail_audit_log
 from security.confirmation_system import ConfirmationSystem
@@ -538,6 +543,16 @@ def _generate_local_session_id() -> str:
     return _normalize_session_id(f"local-{datetime.now(timezone.utc).replace(tzinfo=None).strftime('%Y%m%d%H%M%S')}-{time.time_ns() % 1000000}")
 
 
+def _read_local_session_cookie(request: Request) -> Optional[str]:
+    """Read the anonymous session cookie, accepting pre-rename cookie names."""
+
+    for name in (LOCAL_SESSION_COOKIE_NAME, *LEGACY_LOCAL_SESSION_COOKIE_NAMES):
+        value = request.cookies.get(name)
+        if value:
+            return value
+    return None
+
+
 def _resolve_session_id(request: Optional[Request], explicit: Optional[str] = None) -> str:
     if explicit:
         return _normalize_session_id(explicit)
@@ -545,7 +560,7 @@ def _resolve_session_id(request: Optional[Request], explicit: Optional[str] = No
         raw_session = (
             request.headers.get("X-VORIS-Session-Id")
             or request.headers.get("X-AURA-Session-Id")
-            or request.cookies.get("aura_local_session")
+            or _read_local_session_cookie(request)
         )
         return _normalize_session_id(raw_session)
     return "default"
@@ -628,7 +643,7 @@ def _attach_local_session_cookie(
     if normalized == "default":
         return
     response.set_cookie(
-        key="aura_local_session",
+        key=LOCAL_SESSION_COOKIE_NAME,
         value=normalized,
         max_age=60 * 60 * 24 * 7,
         httponly=False,
@@ -1945,7 +1960,8 @@ async def logout_endpoint(request: Request):
     logout_request(request)
     response = JSONResponse({"success": True, "message": "Session secured."})
     clear_session_cookie(response, secure=_is_secure_request(request))
-    response.delete_cookie("aura_local_session", path="/")
+    for _cookie_name in (LOCAL_SESSION_COOKIE_NAME, *LEGACY_LOCAL_SESSION_COOKIE_NAMES):
+        response.delete_cookie(_cookie_name, path="/")
     return response
 
 
@@ -1956,7 +1972,8 @@ async def logout_page(request: Request):
     logout_request(request)
     response = RedirectResponse("/login", status_code=302)
     clear_session_cookie(response, secure=_is_secure_request(request))
-    response.delete_cookie("aura_local_session", path="/")
+    for _cookie_name in (LOCAL_SESSION_COOKIE_NAME, *LEGACY_LOCAL_SESSION_COOKIE_NAMES):
+        response.delete_cookie(_cookie_name, path="/")
     return response
 
 
@@ -2005,7 +2022,7 @@ async def password_reset_confirm_endpoint(payload: PasswordResetConfirmBody, req
 @app.get("/api/auth/session")
 async def auth_session_status(request: Request):
     user = _current_user(request)
-    session_snapshot = describe_login_session(request.cookies.get("aura_session"))
+    session_snapshot = describe_login_session(read_session_token(request))
     return {
         "authenticated": bool(user),
         "access_mode": "authenticated" if user else "public",
@@ -2291,7 +2308,7 @@ async def api_chat(payload: ChatApiRequest, request: Request):
             )
             return _json_response(image_payload)
 
-        session_token = request.cookies.get("aura_session") if user else None
+        session_token = read_session_token(request) if user else None
         context = _prepare_chat_context(
             payload.message,
             payload.mode,
@@ -3812,7 +3829,7 @@ async def get_memory_status():
 @app.get("/api/security/status")
 async def get_security_status(request: Request, session_id: str = "default", resource_id: Optional[str] = None):
     user = _require_authenticated_user(request)
-    session_snapshot = describe_login_session(request.cookies.get("aura_session"))
+    session_snapshot = describe_login_session(read_session_token(request))
     return {
         "pin": get_pin_status(),
         "auth": {"authenticated": True, "user": user},
@@ -3846,7 +3863,7 @@ async def get_modes():
 @app.post("/api/agents/run/{agent_id}")
 async def run_agent_endpoint(agent_id: str, payload: AgentRunRequest, request: Request):
     user = _current_user(request)
-    session_token = request.cookies.get("aura_session") if user else None
+    session_token = read_session_token(request) if user else None
     normalized_session_id = _resolve_session_id(request, payload.session_id)
     runtime_security_context = {
         "username": user.get("username") if user else payload.username,
@@ -3990,7 +4007,7 @@ async def enforce_action_endpoint(payload: EnforceActionBody, request: Request):
     user = _current_user(request)
     user_id = str(user.get("id")) if user else None
     username = user.get("username") if user else None
-    session_token = request.cookies.get("aura_session")
+    session_token = read_session_token(request)
     result = enforce_action(
         payload.action_name,
         username=username,
@@ -4068,7 +4085,7 @@ async def register_phone_endpoint(payload: PhoneRegisterBody, request: Request):
     if not user:
         return JSONResponse({"success": False, "reason": "Authentication required."}, status_code=401)
     user_id = str(user.get("id") or user.get("username") or "anonymous")
-    session_token = request.cookies.get("aura_session")
+    session_token = read_session_token(request)
     access = enforce_action(
         "phone_register",
         username=user.get("username"),

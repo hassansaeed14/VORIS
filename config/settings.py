@@ -7,8 +7,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _voris_env(name: str, default: str = "") -> str:
+    """Read VORIS_<name>, falling back to the pre-rename AURA_<name>."""
+
+    return (os.getenv(f"VORIS_{name}") or os.getenv(f"AURA_{name}") or default).strip()
+
+
 def _read_api_bundle() -> dict[str, str]:
-    bundle_env = os.getenv("AURA_API_BUNDLE_PATH", "").strip()
+    bundle_env = _voris_env("API_BUNDLE_PATH")
     if not bundle_env:
         return {}
     bundle_path = Path(bundle_env)
@@ -104,7 +110,7 @@ _DEFAULT_PROVIDER_PRIORITY = (
 )
 PROVIDER_PRIORITY = tuple(
     item.strip().lower()
-    for item in os.getenv("AURA_PROVIDER_PRIORITY", _DEFAULT_PROVIDER_PRIORITY).split(",")
+    for item in (_voris_env("PROVIDER_PRIORITY") or _DEFAULT_PROVIDER_PRIORITY).split(",")
     if item.strip()
 )
 
@@ -116,7 +122,7 @@ COMPANY_NAME = "VORIS"
 DEFAULT_VOICE = "jarvis"
 DEFAULT_SPEED = "normal"
 
-AURA_PERSONALITY = (
+VORIS_PERSONALITY = (
     "You are VORIS - Voice-Oriented Responsive Intelligence System. "
     "You were created by Hassan Saeed, a BS Artificial Intelligence student at Hazara University Mansehra, Pakistan. "
     "Hassan Saeed is your developer, creator, and founder. "
@@ -133,5 +139,5 @@ AURA_PERSONALITY = (
     "You are always honest, privacy-aware, and operational."
 )
 
-# Backward-compatible alias for rebrand
-VORIS_PERSONALITY = AURA_PERSONALITY
+# Backward-compatible alias kept for pre-rename importers.
+AURA_PERSONALITY = VORIS_PERSONALITY

@@ -85,7 +85,7 @@ echo.
 start "" cmd /c "timeout /t 3 >nul && start http://localhost:5000"
 
 :: Start backend
-python run_aura.py
+python run_voris.py
 
 :: ── Crash Handling ────────────────────────────────
 echo.
