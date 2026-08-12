@@ -207,12 +207,12 @@ body.itachi-active .state-chip::before {
   transition: color 500ms ease;
 }
 
-body.itachi-active[data-assistant-state="idle"]       .state-chip::before { content: "静"; }
-body.itachi-active[data-assistant-state="listening"]  .state-chip::before { content: "聴"; }
-body.itachi-active[data-assistant-state="analyzing"]  .state-chip::before { content: "析"; }
-body.itachi-active[data-assistant-state="thinking"]   .state-chip::before { content: "考"; }
-body.itachi-active[data-assistant-state="responding"] .state-chip::before { content: "応"; }
-body.itachi-active[data-assistant-state="error"]      .state-chip::before { content: "誤"; }
+body.itachi-active[data-itachi-state="idle"]       .state-chip::before { content: "静"; }
+body.itachi-active[data-itachi-state="listening"]  .state-chip::before { content: "聴"; }
+body.itachi-active[data-itachi-state="analyzing"]  .state-chip::before { content: "析"; }
+body.itachi-active[data-itachi-state="thinking"]   .state-chip::before { content: "考"; }
+body.itachi-active[data-itachi-state="responding"] .state-chip::before { content: "応"; }
+body.itachi-active[data-itachi-state="error"]      .state-chip::before { content: "誤"; }
 
 /* the kanji and the dot go red exactly when the eyes do */
 body.itachi-hot .state-chip::before,
@@ -270,4 +270,113 @@ body.itachi-active .conversation-thread {
   body.itachi-active .state-chip::before {
     transition: none !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MODERN UI (static/index.html — served at "/")
+   ───────────────────────────────────────────────────────────────────────
+   Same skin, different class names. That interface writes the state onto
+   #vorisApp rather than <body>, which is why itachi.js mirrors it to
+   body[data-itachi-state] — every selector above and below keys off the
+   mirror, so one stylesheet serves both front ends.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+body.itachi-active .app-container,
+body.itachi-active .voris-app {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+body.itachi-active .main-content,
+body.itachi-active .chat-panel,
+body.itachi-active .chat-viewport,
+body.itachi-active .conversation {
+  background: transparent;
+}
+
+body.itachi-active .sidebar {
+  background: var(--itachi-glass-strong);
+  backdrop-filter: blur(18px) saturate(0.9);
+  -webkit-backdrop-filter: blur(18px) saturate(0.9);
+}
+
+body.itachi-active .status-card {
+  background: rgba(9, 8, 11, 0.55);
+  border: 1px solid var(--itachi-hairline);
+}
+
+body.itachi-active .top-header {
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 5, 6, 0.80) 0%,
+    rgba(5, 5, 6, 0.30) 72%,
+    transparent 100%
+  );
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-bottom: none;
+}
+
+/* message cards get their own glass so text never rides bare footage */
+body.itachi-active .message__card,
+body.itachi-active .welcome-card {
+  background: var(--itachi-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--itachi-hairline);
+  color: var(--itachi-paper);
+}
+
+body.itachi-active .composer {
+  background: var(--itachi-glass-strong);
+  backdrop-filter: blur(20px) saturate(0.9);
+  -webkit-backdrop-filter: blur(20px) saturate(0.9);
+  border-top: 1px solid var(--itachi-hairline);
+}
+
+body.itachi-active .btn--primary {
+  background: linear-gradient(140deg, var(--itachi-ember), #8d0f1c);
+  border: 1px solid rgba(255, 43, 43, 0.42);
+  color: var(--itachi-paper);
+}
+
+body.itachi-active .btn--primary:hover {
+  background: linear-gradient(140deg, var(--itachi-sharingan), #a8121f);
+}
+
+/* ── the orb steps down; the face is the presence now ──
+   The ball is hidden rather than deleted so nothing app.js writes to it
+   can throw, and the caption stays because it is a truthful readout. */
+body.itachi-active .orb-wrapper {
+  display: none;
+}
+
+body.itachi-active .orb-caption {
+  color: var(--itachi-ash);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+/* the caption carries the kanji, same single-source-of-truth trick */
+body.itachi-active .orb-caption::before {
+  content: "静";
+  font-family: "Shippori Mincho", "Yu Mincho", serif;
+  font-size: 1.15em;
+  margin-right: 0.5em;
+  color: var(--itachi-ash);
+  transition: color 500ms ease;
+}
+
+body.itachi-active[data-itachi-state="idle"]       .orb-caption::before { content: "静"; }
+body.itachi-active[data-itachi-state="listening"]  .orb-caption::before { content: "聴"; }
+body.itachi-active[data-itachi-state="analyzing"]  .orb-caption::before { content: "析"; }
+body.itachi-active[data-itachi-state="thinking"]   .orb-caption::before { content: "考"; }
+body.itachi-active[data-itachi-state="responding"] .orb-caption::before { content: "応"; }
+body.itachi-active[data-itachi-state="error"]      .orb-caption::before { content: "誤"; }
+
+body.itachi-hot .orb-caption::before,
+body.itachi-hot .orb-caption {
+  color: var(--itachi-sharingan);
 }

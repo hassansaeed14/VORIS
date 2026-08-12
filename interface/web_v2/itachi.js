@@ -256,6 +256,10 @@
     state = name;
     stateEnteredAt = performance.now();
     stage.dataset.state = name;
+    /* Mirror onto <body> under our own attribute name. The source attribute
+       lives on a different element per interface, so the skin's selectors
+       key off this mirror instead — one stylesheet works for both. */
+    document.body.dataset.itachiState = name;
     document.body.classList.toggle("itachi-hot", HOT_STATES.has(name));
 
     /* any real state change means the system is working for you — wake up */
@@ -276,19 +280,33 @@
   }
 
   /* ───────────────────── observe the real state ─────────────────────
-     app.js writes document.body.dataset.assistantState. That attribute is
-     the only contract between the two files.                            */
+     The contract is a single attribute: data-assistant-state.
+
+     Which element carries it differs per interface —
+       interface/web_v2/app.js writes it on <body>   (el.body)
+       static/app.js           writes it on #app     (el.app)
+     so rather than hard-coding a host, we observe the whole document and
+     read whichever element currently has the attribute. That keeps this
+     file working unchanged across both front ends.                      */
+
+  function stateHost() {
+    return (
+      document.querySelector("[data-assistant-state]") || document.body
+    );
+  }
 
   function readState() {
-    return document.body.dataset.assistantState || "idle";
+    const host = stateHost();
+    return (host && host.dataset.assistantState) || "idle";
   }
 
   const observer = new MutationObserver(() => setState(readState()));
 
   function startObserving() {
     setState(readState());
-    observer.observe(document.body, {
+    observer.observe(document.documentElement, {
       attributes: true,
+      subtree: true,
       attributeFilter: ["data-assistant-state"],
     });
   }
@@ -344,7 +362,7 @@
   /* Small, deliberate public surface — lets you demo states from the
      console without a backend: VORIS_ITACHI.demo('thinking') */
   window.VORIS_ITACHI = {
-    demo(name) { document.body.dataset.assistantState = name; },
+    demo(name) { stateHost().dataset.assistantState = name; },
     sleep, wake,
     get state() { return state; },
     get loaded() { return `${loadedCount}/${FRAME_COUNT}`; },

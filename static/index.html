@@ -8,10 +8,70 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Shippori+Mincho:wght@500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/assets/styles.css" />
+    <!-- Itachi presence layer. Served from the /static-v2 mount, which is
+         independent of /assets, so the frames are shared with /classic
+         rather than duplicated. Remove this link + the script tag to disable. -->
+    <link rel="stylesheet" href="/static-v2/itachi.css" />
+
+    <style>
+      .composer {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .composer__field {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .btn-attach {
+        background: #101827;
+        border: 1px solid rgba(0, 240, 255, 0.45);
+        color: #00f0ff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        font-size: 1.35rem;
+        line-height: 1;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s ease, border-color 0.2s ease,
+          box-shadow 0.2s ease, transform 0.15s ease;
+      }
+
+      .btn-attach:hover {
+        background: rgba(0, 240, 255, 0.14);
+        border-color: #00f0ff;
+        box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
+        transform: translateY(-1px);
+      }
+
+      .status-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .ping-dot {
+        width: 10px;
+        height: 10px;
+        flex: 0 0 10px;
+        border-radius: 50%;
+        background: #ff4444;
+        display: inline-block;
+        box-shadow: 0 0 10px #ff4444;
+        transition: background 0.2s ease, box-shadow 0.2s ease;
+      }
+    </style>
   </head>
   <body>
     <div class="app-container voris-app" id="vorisApp">
@@ -61,7 +121,7 @@
       <main class="main-content">
         <header class="top-header">
           <div class="top-header__copy">
-            <p class="top-header__eyebrow">Virtual Orchestration and Responsive Intelligence System</p>
+            <p class="top-header__eyebrow">Voice-Oriented Responsive Intelligence System</p>
             <p class="top-header__summary" id="workspaceSummary">Deep-space workspace ready.</p>
           </div>
           <div class="top-header__actions">
@@ -85,96 +145,44 @@
           </div>
 
           <form class="composer" id="composerForm">
-  <button type="button" class="btn-attach" id="uploadButton">+</button>
-  <input type="file" id="systemFileInput" style="display: none;" multiple>
+            <button type="button" class="btn-attach" id="uploadButton">+</button>
+            <input type="file" id="systemFileInput" style="display: none" multiple />
 
-  <label class="composer__field">
-    <span class="sr-only">Message VORIS</span>
-    <textarea
-      id="messageInput"
-      rows="1"
-      placeholder="Ask VORIS, generate a document, or draw a picture of…"
-      autocomplete="off"
-    ></textarea>
-  </label>
-  <div class="composer__actions">
-    <div class="status-wrapper">
-      <p class="composer__status" id="composerStatus">Ready</p>
-      <span id="backendPingDot" class="ping-dot"></span>
-    </div>
-    <button type="button" class="btn btn--icon btn--mic" id="micButton" aria-label="Start voice input" title="Start voice input">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
-        <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
-        <path d="M12 19v3"></path>
-      </svg>
-    </button>
-    <button type="submit" class="btn btn--primary" id="sendButton">Send</button>
-  </div>
-</form>
+            <label class="composer__field">
+              <span class="sr-only">Message VORIS</span>
+              <textarea
+                id="messageInput"
+                rows="1"
+                placeholder="Ask VORIS, generate a document, or draw a picture of…"
+                autocomplete="off"
+              ></textarea>
+            </label>
+            <div class="composer__actions">
+              <div class="status-wrapper">
+                <p class="composer__status" id="composerStatus">Ready</p>
+                <span id="backendPingDot" class="ping-dot"></span>
+              </div>
+              <button
+                type="button"
+                class="btn btn--icon btn--mic"
+                id="micButton"
+                aria-label="Start voice input"
+                title="Start voice input"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
+                  <path d="M12 19v3"></path>
+                </svg>
+              </button>
+              <button type="submit" class="btn btn--primary" id="sendButton">Send</button>
+            </div>
+          </form>
         </section>
       </main>
     </div>
 
     <script src="/assets/app.js" defer></script>
+    <script src="/static-v2/itachi.js" defer></script>
   </body>
 </html>
-<head>
-  <meta charset="UTF-8">
-  <title>VORIS Control Deck</title>
-  
-  <style>
-    .composer {
-      display: flex;
-      width: 100%;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .composer__field {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .btn-attach {
-      background: #101827;
-      border: 1px solid rgba(0, 240, 255, 0.45);
-      color: #00f0ff;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      flex: 0 0 40px;
-      font-size: 1.35rem;
-      line-height: 1;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
-    }
-
-    .btn-attach:hover {
-      background: rgba(0, 240, 255, 0.14);
-      border-color: #00f0ff;
-      box-shadow: 0 0 16px rgba(0, 240, 255, 0.35);
-      transform: translateY(-1px);
-    }
-
-    .status-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .ping-dot {
-      width: 10px;
-      height: 10px;
-      flex: 0 0 10px;
-      border-radius: 50%;
-      background: #ff4444;
-      display: inline-block;
-      box-shadow: 0 0 10px #ff4444;
-      transition: background 0.2s ease, box-shadow 0.2s ease;
-    }
-  </style>
-</head>
