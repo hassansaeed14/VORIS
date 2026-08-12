@@ -28,6 +28,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 SERVER_CONFIG_PATH = CONFIG_DIR / "server.json"
 
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from config import settings  # noqa: E402  (path must be set first)
+
 
 # --------------------------------------------------
 # DEFAULT CONFIG
@@ -175,6 +180,29 @@ def open_browser(url: str, host: str, port: int) -> None:
 # --------------------------------------------------
 # BOOT UI
 # --------------------------------------------------
+def describe_provider_readiness() -> tuple[str, str]:
+    """Return (status_label, detail_line) describing whether the brain can answer.
+
+    Called by print_boot_banner() so startup tells the truth about whether any
+    AI provider is actually usable, instead of always printing "Boot: OK" while
+    every real request silently falls through to the degraded path.
+
+    Available inputs (already imported below in this module's scope):
+      settings.GROQ_API_KEY        -> str, empty when unset
+      settings.SAMBANOVA_API_KEY   -> str, empty when unset
+      settings.DEFAULT_REASONING_PROVIDER -> str, e.g. "groq"
+      settings.DOTENV_LOADED       -> bool, whether a .env file was found
+
+    Note: a key being present only proves *configured*, never *healthy* -
+    provider_hub reserves "healthy" for a key that has passed a live call.
+    The banner must not overstate this.
+
+    TODO(hassan): implement. See the trade-offs discussed before writing this.
+    """
+
+    raise NotImplementedError("describe_provider_readiness() is not implemented yet")
+
+
 def print_boot_banner(url: str, config: dict[str, Any]) -> None:
     safe_print()
     safe_print("=" * 55)
@@ -195,6 +223,13 @@ def print_boot_banner(url: str, config: dict[str, Any]) -> None:
     safe_print("Boot          : OK")
     safe_print("API           : STARTING")
     safe_print("Interface     : WAITING FOR SERVER")
+    try:
+        brain_label, brain_detail = describe_provider_readiness()
+        safe_print(f"Brain         : {brain_label}")
+        if brain_detail:
+            safe_print(f"                {brain_detail}")
+    except NotImplementedError:
+        pass
     safe_print()
     safe_print("VORIS is starting.")
     safe_print()

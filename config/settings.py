@@ -4,7 +4,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from the project root explicitly. Bare load_dotenv() searches upward
+# from the current working directory, so launching VORIS from anywhere other than
+# the project root silently produced "no API key configured".
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DOTENV_PATH = PROJECT_ROOT / ".env"
+DOTENV_LOADED = load_dotenv(DOTENV_PATH) if DOTENV_PATH.exists() else False
+if not DOTENV_LOADED:
+    # Fall back to the legacy search so existing setups keep working.
+    DOTENV_LOADED = load_dotenv()
 
 
 def _voris_env(name: str, default: str = "") -> str:
