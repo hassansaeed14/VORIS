@@ -16,7 +16,7 @@ Status: REAL
 
 Evidence:
 
-- `run_VORIS.py` is the supported launcher.
+- `run_aura.py` is the supported launcher.
 - `api/api_server.py` is the live FastAPI API.
 - Health endpoints exist for session, assistant runtime, desktop apps, and system health.
 

@@ -56,7 +56,7 @@ class RealAssistantRuntimeTests(unittest.TestCase):
         self.assertIn("Limited response", script)
         self.assertIn("function actionStatusLabel", script)
         self.assertIn("function actionStatusMarker", script)
-        self.assertIn("Approval required. AURA will not type, press keys, or scroll", script)
+        self.assertIn("Approval required. VORIS will not type, press keys, or scroll", script)
         self.assertIn("function buildWelcomeCard", script)
         self.assertIn("function normalizeActionTrace", script)
         self.assertIn("function syncRuntimeStateFromPayload", script)

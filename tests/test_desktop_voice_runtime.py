@@ -144,7 +144,7 @@ class DesktopVoiceRuntimeTests(unittest.TestCase):
             "action_steps": [{"action_type": "automation_critical_blocked"}],
         }
 
-        self.assertEqual(runtime._safe_spoken_text(sensitive, sensitive["response"]), "This needs your approval in AURA before I can continue.")
+        self.assertEqual(runtime._safe_spoken_text(sensitive, sensitive["response"]), "This needs your approval in VORIS before I can continue.")
         self.assertEqual(runtime._safe_spoken_text(critical, critical["response"]), "I blocked that action for safety.")
 
     def test_process_command_does_not_speak_sensitive_raw_content(self):
@@ -157,8 +157,8 @@ class DesktopVoiceRuntimeTests(unittest.TestCase):
         }), patch.object(runtime, "speak_desktop_text", return_value={"success": True, "status": "spoken"}) as speak_mock:
             result = runtime.process_desktop_voice_command("open notepad and type hello", speak=True)
 
-        self.assertEqual(result["spoken_text"], "This needs your approval in AURA before I can continue.")
-        speak_mock.assert_called_once_with("This needs your approval in AURA before I can continue.")
+        self.assertEqual(result["spoken_text"], "This needs your approval in VORIS before I can continue.")
+        speak_mock.assert_called_once_with("This needs your approval in VORIS before I can continue.")
 
     def test_duplicate_command_is_ignored_inside_cooldown(self):
         with patch.object(runtime, "_dependency_snapshot", return_value=AVAILABLE_DEPS):

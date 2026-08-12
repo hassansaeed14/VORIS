@@ -8,7 +8,7 @@ Thank you for helping improve VORIS. This project values truthful, tested progre
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
-python run_VORIS.py
+python run_aura.py
 ```
 
 Open:
@@ -22,7 +22,7 @@ http://127.0.0.1:5000/
 Before submitting changes, run:
 
 ```powershell
-python -m py_compile run_VORIS.py api\api_server.py
+python -m py_compile run_aura.py api\api_server.py
 node --check interface\web_v2\app.js
 node --check interface\web_v2\auth.js
 python -m unittest discover -s tests -p "test_*.py"

@@ -1,8 +1,8 @@
-﻿# VORIS
+# VORIS
 
-Autonomous Universal Responsive Assistant
+Voice-Oriented Responsive Intelligence System — an Autonomous Universal Responsive Assistant.
 
-VORIS is a local-first, JARVIS-style assistant prototype that combines chat, document generation, controlled desktop actions, voice scaffolding, memory, and a safety-first execution model.
+VORIS is a local-first, JARVIS-style assistant prototype that combines chat, document generation, controlled desktop actions, voice scaffolding, memory, local file RAG, and a safety-first execution model.
 
 VORIS is currently a **Level 3 / early Level 4 JARVIS-style assistant prototype**. It is useful for controlled local demos and continued development, but it is **not** a finished production assistant and it is **not** real JARVIS-level autonomy.
 
@@ -26,9 +26,9 @@ Status: active local development and controlled demo readiness.
 
 The stable path is:
 
-`run_VORIS.py` -> FastAPI app in `api/api_server.py` -> runtime/brain/tools/security modules -> `interface/web_v2`
+`run_aura.py` -> FastAPI app in `api/api_server.py` -> runtime/brain/tools/security modules -> `interface/web_v2`
 
-The project currently has a broad automated test suite. At the latest stable milestone, the local unittest suite covered more than 250 tests, with the recent full run reporting 293 passing tests.
+The project has a broad automated test suite; the current full local run reports 314 passing tests.
 
 ## Key Features
 
@@ -36,7 +36,8 @@ The project currently has a broad automated test suite. At the latest stable mil
 - ChatGPT-style progressive response rendering with safe markdown/code display.
 - Authenticated and public session handling.
 - Scoped memory and personalization safeguards.
-- Provider-backed response generation with degraded fallback behavior.
+- SambaNova-backed response generation with degraded fallback behavior (see Providers below).
+- Local file RAG pipeline for CSV/TXT analysis (see below).
 - Document generation for notes, assignments, PDF, DOCX, TXT, and PPTX outputs.
 - Direct document download delivery and preview cards.
 - **Pollinations Image Generation Bypass** — regex-based command interception in `api/api_server.py` that strips natural-language image triggers, builds a Pollinations URL, and returns immediately with `execution_mode: "image_bypass"` (skips the standard text engine, provider routing, and the older `tools/image_generation.py` unavailable stub on `/api/chat`).
@@ -47,6 +48,30 @@ The project currently has a broad automated test suite. At the latest stable mil
 - Basic screen capture and OCR-based safety checks.
 - Browser push-to-talk and desktop voice runtime scaffolding.
 - Trust model for safe, private, sensitive, and critical actions.
+
+## Providers: SambaNova Engine
+
+The core routing engine has been migrated to SambaNova to bypass previous TPM (tokens-per-minute) rate limits, allowing large, uninterrupted 4096-token outputs.
+
+- **Text Engine:** `Meta-Llama-3.3-70B-Instruct`
+- **Vision Engine:** `Llama-3.2-11B-Vision-Instruct`
+- **Action required:** generate a free API key at [cloud.sambanova.ai](https://cloud.sambanova.ai/).
+
+API keys are never hardcoded in Python files. Create a `.env` file in the project root (already covered by `.gitignore`):
+
+```env
+SAMBANOVA_API_KEY=your_actual_key_here
+```
+
+## Local File RAG Pipeline
+
+VORIS supports lightweight, memory-safe Retrieval-Augmented Generation for local file analysis (CSV/TXT) without heavy vector databases:
+
+- **Seamless UI integration:** file upload directly in the chat composer with dynamic attachment badges.
+- **Frontend chunking and memory safety:** files are read natively in the browser via JavaScript `FileReader`, safely truncated to a 2000-character limit, and attached to the prompt as raw text — preventing API timeouts and local server crashes.
+- **Smart traffic routing:** the frontend `classifyCommand` traffic cop ignores dead/spam URLs inside uploaded datasets (preventing rogue new tabs) and forces an internal analysis route when a file is present.
+
+Flow: user attaches a file via `+` → JS reads it as text and enforces memory limits → the text is classified (bypassing external URL triggers when a file is present) → file data is stapled to the prompt → the combined payload is routed to the FastAPI backend.
 
 ## Architecture Overview
 
@@ -64,7 +89,7 @@ User input
 
 Important paths:
 
-- `run_VORIS.py` - supported local launcher.
+- `run_aura.py` - supported local launcher.
 - `api/api_server.py` - live FastAPI API.
 - `brain/` - runtime orchestration, response quality, providers, traces.
 - `security/` - sessions, permissions, trust enforcement.
@@ -82,8 +107,8 @@ VORIS uses public, standard AI-app patterns for the writing experience:
 - safe markdown rendering in `web_v2`;
 - readable code blocks with copy-code controls;
 - document artifacts/cards for generated deliverables;
-- Pollinations image bypass responses delivered with `image_url` and `execution_mode: "image_bypass"` (streaming disabled for this path so the UI does not flash the raw URL).
-- Legacy `tools/image_generation.py` hooks that stay honest when no provider adapter is configured.
+- Pollinations image bypass responses delivered with `image_url` and `execution_mode: "image_bypass"` (streaming disabled for this path so the UI does not flash the raw URL);
+- legacy `tools/image_generation.py` hooks that stay honest when no provider adapter is configured.
 
 See `docs/RESPONSE_RENDERING.md`.
 
@@ -124,24 +149,25 @@ Critical actions must remain blocked or require a stronger verification flow. VO
 Prerequisites:
 
 - Windows is the primary development target.
-- Python 3.10+ recommended.
+- Python 3.12 recommended (3.10+ minimum).
 - Node.js for JavaScript syntax checks.
 - Optional local dependencies for voice, OCR, DOCX/PDF/PPTX export, and automation.
 
 Create and activate a virtual environment:
 
 ```powershell
-python -m venv venv
-.\venv\Scripts\activate
+# Force Python 3.12 virtual environment creation
+py -3.12 -m venv venv
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
-Create a local `.env` file only for your own machine. Do not commit secrets.
+Create a local `.env` file only for your own machine (see Providers above). Do not commit secrets.
 
 ## Run
 
 ```powershell
-python run_VORIS.py
+python run_aura.py
 ```
 
 Then open:
@@ -159,7 +185,7 @@ python tools/health_check.py
 ## Test
 
 ```powershell
-python -m py_compile run_VORIS.py api\api_server.py
+python -m py_compile run_aura.py api\api_server.py
 node --check interface\web_v2\app.js
 node --check interface\web_v2\auth.js
 python -m unittest discover -s tests -p "test_*.py"
@@ -218,7 +244,7 @@ Suggested screenshots:
 ## Limitations
 
 - Voice reliability depends on local microphone, STT, TTS, and optional runtime dependencies.
-- Provider reliability currently depends heavily on configured provider keys, especially Groq in local development.
+- Provider reliability depends on configured provider keys (SambaNova primary; legacy Groq path in local development).
 - Pollinations bypass requires network access to `image.pollinations.ai`; image quality and availability depend on that service.
 - Non-regex image requests still use `tools/image_generation.py`, which remains provider-ready but inactive until a verified adapter is configured.
 - OCR screen awareness is useful for safety checks but not deep visual understanding.
@@ -240,51 +266,11 @@ Near-term focus:
 
 See `ROADMAP.md` for the full plan.
 
+## Contributors
+
+- Hassan Saeed
+- Syed Abdur Raffay
+
 ## License / Status
 
 No license file is currently present. Until a license is added, this repository should be treated as private/all-rights-reserved by default.
-Collaborator added: Syed Abdur Raffay
-# VORIS (Voice-Oriented Responsive Intelligence System)
-
-A secure, local Personal AI Workspace featuring custom smart-routing, a dark-mode UI, and in-browser data processing.
-
-## 🚀 Recent Updates: Local File RAG Pipeline
-VORIS now supports lightweight, memory-safe Retrieval-Augmented Generation (RAG) for local file analysis (CSV/TXT) without relying on heavy Vector Databases.
-
-### **Features:**
-* **Seamless UI Integration:** Added a sleek file upload interface directly into the chat composer with dynamic attachment badges.
-* **Frontend Chunking & Memory Safety:** To prevent API timeouts and local server crashes, files are read natively in the browser via JavaScript `FileReader`, safely truncated to a 2000-character limit, and attached to the user's prompt as raw text.
-* **Smart Traffic Routing:** The frontend `classifyCommand` traffic cop was re-architected. VORIS now intelligently ignores dead/spam URLs inside uploaded datasets (preventing rogue new tabs) and forces the system into an internal analysis route when a file is present.
-* **DOM Optimization:** Cleaned up ghost elements and duplicate component IDs in the `app-shell` to ensure smooth CSS rendering and layout stability.
-
-### **Architecture Flow:**
-1. User attaches a file via the `+` button.
-2. JS intercepts the file, reads it as text, and enforces memory limits.
-3. The raw user text is classified (bypassing external URL triggers if a file is present).
-4. The file data is stapled to the user's prompt.
-5. The combined payload is routed to the Python (FastAPI) backend for AI processing.
-# VORIS Backend Update: SambaNova Migration & Stability Fixes
-
-## ⚠️ Critical Architectural Changes
-
-### 1. Engine Migration: SambaNova API
-The core routing engine has been migrated to SambaNova to completely bypass previous TPM (Tokens Per Minute) rate limits, allowing for massive, uninterrupted 4096-token outputs.
-* **Text Engine:** `Meta-Llama-3.3-70B-Instruct`
-* **Vision Engine:** `Llama-3.2-11B-Vision-Instruct`
-* **Action Required:** Generate a free API key at [cloud.sambanova.ai](https://cloud.sambanova.ai/).
-
-### 2. Security Configuration (.env)
-API keys are no longer hardcoded into the Python execution files. You must create a `.env` file in the root directory and add it to your `.gitignore`.
-```env
-SAMBANOVA_API_KEY=your_actual_key_here
-# 1. Force Python 3.12 Virtual Environment creation
-py -3.12 -m venv venv
-
-# 2. Activate the environment
-.\venv\Scripts\Activate.ps1
-
-# 3. Install core C-compiled and standard dependencies
-pip install fastapi pydantic waitress python-dotenv openai cffi cryptography
-
-# 4. Direct Launch
-python run_aura.py

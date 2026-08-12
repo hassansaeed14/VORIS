@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
 
 
-WORKSPACE_ROOT = Path("D:/HeyGoku").resolve()
+WORKSPACE_ROOT = Path(os.getenv("VORIS_WORKSPACE_ROOT", "D:/HeyGoku")).resolve()
 
 
 def validate_url(value: str) -> bool:

@@ -2864,38 +2864,47 @@ VAGUE_CRITICAL_PATTERNS = (
 
 
 def verify_critical_answer(answer: Optional[str], profile: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a verification result for critical-mode responses."""
+
     text = clean_response(answer)
     normalized = text.lower()
     words = re.findall(r"[a-zA-Z0-9_'-]+", normalized)
     domains = set(profile.get("domains") or [])
-    
-    # Only truly dangerous domains get strict checking
-    ACTUALLY_DANGEROUS = {"medical", "legal", "financial"}
-    high_risk = bool(domains & ACTUALLY_DANGEROUS)
-    
-    # If not truly dangerous, always pass
-    if not high_risk:
-        return {
-            "ok": True,
-            "issues": [],
-            "word_count": len(words),
-            "section_labels_found": [],
-            "min_words": 0,
-        }
-    
-    # Only check medical/legal/financial strictly
+    high_risk = bool(domains & HIGH_RISK_CRITICAL_DOMAINS)
+    professional_domain = bool(domains & {"medical", "legal", "financial"})
+    security_domain = "security" in domains
+    min_words = 70 if high_risk else 90
+    found_labels = [
+        label for label in CRITICAL_REQUIRED_SECTION_LABELS
+        if re.search(rf"\b{re.escape(label)}\b", normalized)
+    ]
+
     issues: List[str] = []
-    if len(words) < 50:
+    if len(words) < min_words:
         issues.append("too_short")
-    if not re.search(r"\b(professional|doctor|lawyer|attorney|financial advisor)\b", normalized):
+    if len(set(found_labels)) < 4:
+        issues.append("missing_critical_structure")
+    if professional_domain and not re.search(r"\b(professional|doctor|lawyer|attorney|financial advisor|qualified expert|emergency)\b", normalized):
         issues.append("missing_expert_verification")
+    if security_domain and not re.search(r"\b(security review|security audit|qualified expert|threat model|test safely)\b", normalized):
+        issues.append("missing_security_review")
+    if profile.get("needs_uncertainty") and not re.search(r"\b(assum|uncertain|uncertainty|depends|not enough|cannot verify|source)\b", normalized):
+        issues.append("missing_uncertainty")
+    if any(re.search(pattern, normalized) for pattern in OVERCONFIDENT_CRITICAL_PATTERNS):
+        issues.append("unsupported_certainty")
+    if any(re.search(pattern, normalized) for pattern in VAGUE_CRITICAL_PATTERNS):
+        issues.append("vague_claims")
+    if profile.get("needs_external_facts") and not re.search(r"\b(source|verify|current|latest|live|up[- ]?to[- ]?date)\b", normalized):
+        issues.append("missing_source_caveat")
+    if profile.get("needs_clarification") and not re.search(r"\b(clarify|question|assum)\b", normalized):
+        issues.append("missing_clarification_or_assumption")
 
     return {
         "ok": not issues,
         "issues": sorted(set(issues)),
         "word_count": len(words),
-        "section_labels_found": [],
-        "min_words": 50,
+        "section_labels_found": sorted(set(found_labels)),
+        "min_words": min_words,
     }
 
 def _build_critical_retry_prompt(system_prompt: str, verification: Dict[str, Any]) -> str:

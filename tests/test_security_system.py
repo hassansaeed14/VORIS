@@ -15,7 +15,7 @@ import security.session_manager as session_manager
 
 class SecuritySystemTests(unittest.TestCase):
     def test_describe_login_session_returns_expiry_details(self):
-        with TemporaryDirectory(dir=r"D:\HeyGoku") as temp_dir:
+        with TemporaryDirectory() as temp_dir:
             sessions_path = Path(temp_dir) / "sessions.json"
             with patch.object(session_manager, "SESSIONS_FILE", sessions_path):
                 token = session_manager.create_login_session(
@@ -64,7 +64,7 @@ class SecuritySystemTests(unittest.TestCase):
                 self.assertTrue(result["next_step_hint"])
 
     def test_enforce_action_allows_critical_action_with_valid_otp(self):
-        with TemporaryDirectory(dir=r"D:\HeyGoku") as temp_dir:
+        with TemporaryDirectory() as temp_dir:
             otp_state_path = Path(temp_dir) / "otp_state.json"
             with patch.object(otp_manager, "OTP_STATE_FILE", otp_state_path):
                 issued = otp_manager.request_otp("user-1", "purchase")

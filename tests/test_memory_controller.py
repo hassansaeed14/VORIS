@@ -11,7 +11,7 @@ import memory.working_memory as working_memory
 
 class MemoryControllerTests(unittest.TestCase):
     def test_process_interaction_memory_routes_semantic_working_and_episodic_items(self):
-        root = Path(mkdtemp(dir=r"D:\HeyGoku"))
+        root = Path(mkdtemp())
         with patch.object(semantic_memory, "SEMANTIC_MEMORY_FILE", root / "semantic.json"), patch.object(
             episodic_memory,
             "EPISODIC_MEMORY_FILE",
@@ -36,7 +36,7 @@ class MemoryControllerTests(unittest.TestCase):
             self.assertEqual(working_memory.load_working_memory().active_file, "Aura Report.docx")
 
     def test_public_interaction_memory_is_not_persisted(self):
-        root = Path(mkdtemp(dir=r"D:\HeyGoku"))
+        root = Path(mkdtemp())
         with patch.object(semantic_memory, "SEMANTIC_MEMORY_FILE", root / "semantic.json"), patch.object(
             episodic_memory,
             "EPISODIC_MEMORY_FILE",

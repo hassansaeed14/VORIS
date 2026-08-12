@@ -6,7 +6,7 @@ All notable VORIS changes are summarized here. This changelog favors verified ca
 
 ### Added / Stabilized
 
-- `run_VORIS.py` confirmed as the supported launcher.
+- `run_aura.py` confirmed as the supported launcher.
 - FastAPI backend and `web_v2` interface stabilized for local demo flows.
 - Auth flows wired for register, login, forgot password, session state, and logout.
 - Public/authenticated state made more truthful in the UI.

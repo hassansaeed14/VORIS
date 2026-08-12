@@ -8,7 +8,7 @@ import memory.vector_memory as vector_memory
 
 class VectorMemoryTests(unittest.TestCase):
     def test_fallback_store_search_delete_and_clear_work_when_vector_backend_is_unavailable(self):
-        root = Path(mkdtemp(dir=r"D:\HeyGoku"))
+        root = Path(mkdtemp())
         fallback_file = root / "vector_fallback.json"
 
         with patch.object(vector_memory, "FALLBACK_FILE", fallback_file), patch.object(

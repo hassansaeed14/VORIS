@@ -4,7 +4,7 @@ This roadmap is intentionally conservative. VORIS should become more capable onl
 
 ## Completed Milestones
 
-- FastAPI runtime with `run_VORIS.py` as the supported launcher.
+- FastAPI runtime with `run_aura.py` as the supported launcher.
 - `web_v2` chat-first interface with VORIS orb presence.
 - Auth routes for login, register, forgot password, session state, and logout.
 - Scoped memory and identity safeguards.
@@ -36,7 +36,7 @@ Current priorities:
 
 ### Phase 1 - Runtime and Reliability Hardening
 
-- Keep `run_VORIS.py` as the single supported launcher.
+- Keep `run_aura.py` as the single supported launcher.
 - Ensure UTF-8 safe console output.
 - Detect port conflicts clearly.
 - Keep startup, health checks, and shutdown predictable.

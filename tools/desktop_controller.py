@@ -174,22 +174,23 @@ def open_application(app_name: str | None) -> Dict[str, Any]:
     normalized = availability.get("app_name")
     if not availability.get("supported"):
         from tools.app_scanner import launch_any_app
-    scanner_result = launch_any_app(app_name)
-    if scanner_result["success"]:
+
+        scanner_result = launch_any_app(app_name)
+        if scanner_result["success"]:
+            return {
+                "success": True,
+                "status": "opened",
+                "app_name": app_name,
+                "label": app_name,
+                "message": scanner_result["message"],
+            }
         return {
-            "success": True,
-            "status": "opened",
-            "app_name": app_name,
-            "label": app_name,
-            "message": scanner_result["message"],
+            "success": False,
+            "status": "unsupported",
+            "app_name": None,
+            "message": "I can't open that yet.",
+            "error": "Unsupported desktop application.",
         }
-    return {
-        "success": False,
-        "status": "unsupported",
-        "app_name": None,
-        "message": "I can't open that yet.",
-        "error": "Unsupported desktop application.",
-    }
     label = str(availability.get("label") or normalized or "That app")
     launch_command = availability.get("launch_command")
     if not launch_command:
