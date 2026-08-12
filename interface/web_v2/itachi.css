@@ -1,15 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   VORIS — ITACHI PRESENCE LAYER (skin)
+   VORIS — ITACHI, FACE TO FACE
    ───────────────────────────────────────────────────────────────────────
-   Loaded AFTER styles.css, so equal-specificity rules win. Every selector
-   is scoped under .itachi-active so removing one class from <body> fully
-   disables the skin without touching styles.css.
+   The normal chat is left completely alone. Everything here is inert until
+   .itachi-face-open is on <body>, so nothing sits behind your UI blurring
+   it. The only always-on rule is the affordance on the orb.
 
-   Palette is sampled from the footage, not invented:
+   Palette sampled from the footage:
      ink      #050506   the black the frames sit on
      sharingan#ff2b2b   the eye
      ember    #d6202c   Amaterasu halo
-     paper    #e8e4dc   warm off-white (skin/paper tones), never pure #fff
+     paper    #e8e4dc   warm off-white, never pure #fff
      ash      #9a9aa2   secondary text
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -19,364 +19,268 @@
   --itachi-ember: #d6202c;
   --itachi-paper: #e8e4dc;
   --itachi-ash: #9a9aa2;
-  --itachi-glass: rgba(9, 8, 11, 0.72);
-  --itachi-glass-strong: rgba(6, 5, 8, 0.88);
-  --itachi-hairline: rgba(232, 228, 220, 0.10);
+  --itachi-hairline: rgba(232, 228, 220, 0.12);
+}
+
+/* ─────────────────────── the orb is the door ─────────────────────── */
+
+.itachi-door {
+  cursor: pointer;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+              filter 320ms ease;
+}
+
+.itachi-door:hover,
+.itachi-door:focus-visible {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 14px rgba(255, 43, 43, 0.45));
+}
+
+.itachi-door:focus-visible {
+  outline: 2px solid var(--itachi-sharingan);
+  outline-offset: 4px;
+}
+
+/* ───────────────────────────── overlay ───────────────────────────── */
+
+.itachi-face {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 380ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.itachi-face.is-open { opacity: 1; }
+.itachi-face[hidden] { display: none; }
+
+/* The veil blurs YOUR UI, never his face. */
+.itachi-face__veil {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 3, 4, 0.88);
+  backdrop-filter: blur(18px) saturate(0.7);
+  -webkit-backdrop-filter: blur(18px) saturate(0.7);
+}
+
+.itachi-face__close {
+  position: absolute;
+  top: 22px;
+  right: 26px;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--itachi-hairline);
+  background: rgba(9, 8, 11, 0.7);
+  color: var(--itachi-ash);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 200ms ease, border-color 200ms ease, transform 200ms ease;
+}
+
+.itachi-face__close:hover {
+  color: var(--itachi-paper);
+  border-color: rgba(255, 43, 43, 0.5);
+  transform: rotate(90deg);
 }
 
 /* ───────────────────────────── the stage ───────────────────────────── */
 
-.itachi-stage {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background: var(--itachi-ink);
-  pointer-events: none;
+.itachi-face__stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 26px;
+  width: min(560px, 92vw);
+  transform: translateY(18px) scale(0.97);
+  transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.itachi-stage__canvas {
+.itachi-face.is-open .itachi-face__stage {
+  transform: translateY(0) scale(1);
+}
+
+/* ───────────────────────────── portrait ─────────────────────────────
+   Deliberately unblurred and unscrimmed — he is the subject, not a
+   backdrop. Crop is handled in JS from the measured head bounding box. */
+
+.itachi-face__portrait {
+  position: relative;
+  width: min(360px, 62vw);
+  aspect-ratio: 3 / 4;
+  border-radius: 200px 200px 26px 26px;
+  overflow: hidden;
+  background: var(--itachi-ink);
+  border: 1px solid var(--itachi-hairline);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.75);
+  transition: box-shadow 800ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 800ms ease;
+}
+
+.itachi-face__canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   display: block;
-  /* held slightly back so the face reads as presence, not wallpaper */
-  opacity: 0.92;
-  transition: opacity 1.2s cubic-bezier(0.22, 1, 0.36, 1),
-              filter 1.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* asleep: he dims and desaturates, but never fully disappears */
-.itachi-stage.is-asleep .itachi-stage__canvas {
-  opacity: 0.42;
-  filter: saturate(0.35) brightness(0.72);
-}
-
-/* Adaptive scrim. --scrim is written per-frame by itachi.js from the
-   precomputed luminance table, so chat contrast survives the bright
-   sharingan close-up without dimming the calm frames unnecessarily. */
-.itachi-stage__scrim {
+/* red rim, only while the eyes are actually red */
+.itachi-face__glow {
   position: absolute;
   inset: 0;
-  --scrim: 0.35;
-  background:
-    linear-gradient(
-      to bottom,
-      rgba(5, 5, 6, calc(var(--scrim) * 0.55)) 0%,
-      rgba(5, 5, 6, calc(var(--scrim) * 0.25)) 28%,
-      rgba(5, 5, 6, calc(var(--scrim) * 0.85)) 68%,
-      rgba(5, 5, 6, calc(var(--scrim) * 0.98)) 100%
-    );
-  transition: background 240ms linear;
-}
-
-/* red bloom, only while the eyes are actually red */
-.itachi-stage__bloom {
-  position: absolute;
-  inset: 0;
+  pointer-events: none;
   opacity: 0;
   background: radial-gradient(
-    58% 42% at 50% 38%,
-    rgba(255, 43, 43, 0.26) 0%,
-    rgba(214, 32, 44, 0.10) 45%,
-    transparent 72%
+    72% 50% at 50% 42%,
+    rgba(255, 43, 43, 0.20) 0%,
+    transparent 70%
   );
   transition: opacity 900ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-body.itachi-hot .itachi-stage__bloom { opacity: 1; }
+body.itachi-hot .itachi-face__glow { opacity: 1; }
 
-/* ─────────────── suppress the old backdrop so it doesn't fight ─────────────── */
-
-body.itachi-active .page-backdrop,
-body.itachi-active .page-grid,
-body.itachi-active .page-ambient {
-  opacity: 0.18;
-  mix-blend-mode: soft-light;
+body.itachi-hot .itachi-face__portrait {
+  border-color: rgba(255, 43, 43, 0.42);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.75),
+              0 0 60px rgba(255, 43, 43, 0.22);
 }
 
-body.itachi-active {
-  background: var(--itachi-ink);
-}
+/* ───────────────────────────── his line ───────────────────────────── */
 
-/* the app sits above the stage */
-body.itachi-active .app-shell {
-  position: relative;
-  z-index: 1;
-  background: transparent;
-}
-
-/* ───────────────────────────── surfaces ─────────────────────────────
-   The face lives centre-frame. The sidebar covers the least important
-   part of it, so it can be near-opaque; the chat column sits over his
-   robe, which the luminance table says is the darkest region.        */
-
-body.itachi-active .sidebar {
-  background: var(--itachi-glass-strong);
-  backdrop-filter: blur(18px) saturate(0.9);
-  -webkit-backdrop-filter: blur(18px) saturate(0.9);
-  border-right: 1px solid var(--itachi-hairline);
-}
-
-body.itachi-active .topbar {
-  background: linear-gradient(
-    to bottom,
-    rgba(5, 5, 6, 0.82) 0%,
-    rgba(5, 5, 6, 0.35) 70%,
-    transparent 100%
-  );
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-bottom: none;
-}
-
-body.itachi-active .chat-stage,
-body.itachi-active .workspace,
-body.itachi-active .workspace__body,
-body.itachi-active .chat-scroll {
-  background: transparent;
-}
-
-/* message bubbles: their own glass so text never rides bare footage */
-body.itachi-active .conversation-thread .message,
-body.itachi-active .conversation-thread [class*="message"] {
-  background: var(--itachi-glass);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+.itachi-face__speech {
+  width: 100%;
+  min-height: 76px;
+  padding: 18px 22px;
+  border-radius: 16px;
+  background: rgba(9, 8, 11, 0.9);
   border: 1px solid var(--itachi-hairline);
+  color: var(--itachi-paper);
+}
+
+.itachi-face__name {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--itachi-ash);
+  margin-bottom: 8px;
+}
+
+.itachi-face__name::before {
+  content: "静";
+  font-family: "Shippori Mincho", "Yu Mincho", serif;
+  font-size: 1.15em;
+  margin-right: 0.6em;
+  color: var(--itachi-ash);
+  transition: color 500ms ease;
+}
+
+/* the kanji tracks the same state the eyes do — one source of truth */
+body[data-itachi-state="idle"]       .itachi-face__name::before { content: "静"; }
+body[data-itachi-state="listening"]  .itachi-face__name::before { content: "聴"; }
+body[data-itachi-state="analyzing"]  .itachi-face__name::before { content: "析"; }
+body[data-itachi-state="thinking"]   .itachi-face__name::before { content: "考"; }
+body[data-itachi-state="responding"] .itachi-face__name::before { content: "応"; }
+body[data-itachi-state="error"]      .itachi-face__name::before { content: "誤"; }
+
+body.itachi-hot .itachi-face__name::before { color: var(--itachi-sharingan); }
+
+.itachi-face__line {
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+
+.itachi-face__speech.is-fresh .itachi-face__line {
+  animation: itachi-line 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes itachi-line {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ───────────────────────────── input bar ───────────────────────────── */
+
+.itachi-face__bar {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.itachi-face__input {
+  flex: 1;
+  min-width: 0;
+  padding: 15px 18px;
   border-radius: 14px;
+  background: rgba(9, 8, 11, 0.9);
+  border: 1px solid var(--itachi-hairline);
   color: var(--itachi-paper);
+  font: inherit;
+  font-size: 0.98rem;
 }
 
-body.itachi-active .composer {
-  background: var(--itachi-glass-strong);
-  backdrop-filter: blur(20px) saturate(0.9);
-  -webkit-backdrop-filter: blur(20px) saturate(0.9);
-  border-top: 1px solid var(--itachi-hairline);
-}
+.itachi-face__input::placeholder { color: rgba(154, 154, 162, 0.75); }
 
-body.itachi-active .right-panel {
-  background: var(--itachi-glass-strong);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-left: 1px solid var(--itachi-hairline);
-}
-
-/* ─────────────────── the eye as accent, used sparingly ─────────────────── */
-
-body.itachi-active .send-button {
-  background: linear-gradient(140deg, var(--itachi-ember), #8d0f1c);
-  border: 1px solid rgba(255, 43, 43, 0.42);
-  color: var(--itachi-paper);
-}
-
-body.itachi-active .send-button:hover {
-  background: linear-gradient(140deg, var(--itachi-sharingan), #a8121f);
-}
-
-body.itachi-active .composer__input-shell:focus-within {
+.itachi-face__input:focus {
+  outline: none;
   border-color: rgba(255, 43, 43, 0.55);
   box-shadow: 0 0 0 3px rgba(255, 43, 43, 0.12);
 }
 
-/* keyboard focus must stay visible against the footage */
-body.itachi-active :focus-visible {
+.itachi-face__send {
+  padding: 0 26px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 43, 43, 0.42);
+  background: linear-gradient(140deg, var(--itachi-ember), #8d0f1c);
+  color: var(--itachi-paper);
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 220ms ease, transform 160ms ease;
+}
+
+.itachi-face__send:hover {
+  background: linear-gradient(140deg, var(--itachi-sharingan), #a8121f);
+  transform: translateY(-1px);
+}
+
+.itachi-face :focus-visible {
   outline: 2px solid var(--itachi-sharingan);
   outline-offset: 2px;
 }
 
-/* ───────────────── state chip carries the kanji ─────────────────
-   Decorating the chip app.js already owns keeps ONE source of truth
-   for the assistant's state — no second readout that could drift.   */
+/* ───────────────────────────── responsive ───────────────────────────── */
 
-body.itachi-active .state-chip {
-  background: rgba(9, 8, 11, 0.78);
-  border: 1px solid var(--itachi-hairline);
-  color: var(--itachi-ash);
-  letter-spacing: 0.06em;
+@media (max-width: 640px) {
+  .itachi-face__stage { gap: 18px; width: 94vw; }
+  .itachi-face__portrait { width: min(260px, 66vw); }
+  .itachi-face__line { font-size: 0.95rem; }
+  .itachi-face__close { top: 12px; right: 14px; }
 }
 
-body.itachi-active .state-chip::before {
-  content: "静";
-  font-family: "Shippori Mincho", "Yu Mincho", serif;
-  font-size: 1.02em;
-  line-height: 1;
-  margin-right: 0.55em;
-  color: var(--itachi-ash);
-  transition: color 500ms ease;
+@media (max-height: 700px) {
+  .itachi-face__portrait { width: min(230px, 40vh); }
+  .itachi-face__stage { gap: 16px; }
 }
 
-body.itachi-active[data-itachi-state="idle"]       .state-chip::before { content: "静"; }
-body.itachi-active[data-itachi-state="listening"]  .state-chip::before { content: "聴"; }
-body.itachi-active[data-itachi-state="analyzing"]  .state-chip::before { content: "析"; }
-body.itachi-active[data-itachi-state="thinking"]   .state-chip::before { content: "考"; }
-body.itachi-active[data-itachi-state="responding"] .state-chip::before { content: "応"; }
-body.itachi-active[data-itachi-state="error"]      .state-chip::before { content: "誤"; }
-
-/* the kanji and the dot go red exactly when the eyes do */
-body.itachi-hot .state-chip::before,
-body.itachi-hot .state-chip__dot {
-  color: var(--itachi-sharingan);
-  background: var(--itachi-sharingan);
-  box-shadow: 0 0 10px rgba(255, 43, 43, 0.65);
-}
-
-body.itachi-hot .state-chip {
-  border-color: rgba(255, 43, 43, 0.34);
-}
-
-/* ─────────────────────────── typography ─────────────────────────── */
-
-body.itachi-active .sidebar__brand h1,
-body.itachi-active .topbar__headline h2 {
-  color: var(--itachi-paper);
-  letter-spacing: 0.16em;
-  font-weight: 600;
-}
-
-body.itachi-active .eyebrow {
-  color: var(--itachi-ash);
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  font-size: 0.66rem;
-}
-
-body.itachi-active .conversation-thread {
-  color: var(--itachi-paper);
-}
-
-/* ─────────────────────────── responsive ───────────────────────────
-   On narrow screens the face competes with the chat for very little
-   room, so it recedes and the surfaces go heavier.                  */
-
-@media (max-width: 860px) {
-  .itachi-stage__canvas { opacity: 0.55; }
-  .itachi-stage__scrim { --scrim: 0.75; }
-  body.itachi-active .sidebar,
-  body.itachi-active .composer {
-    background: rgba(5, 5, 6, 0.95);
-  }
-}
-
-/* ───────────────────────── reduced motion ─────────────────────────
-   itachi.js already snaps rather than interpolates; this removes the
-   remaining CSS transitions so nothing drifts.                       */
+/* ───────────────────────── reduced motion ───────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
-  .itachi-stage__canvas,
-  .itachi-stage__bloom,
-  .itachi-stage__scrim,
-  body.itachi-active .state-chip::before {
-    transition: none !important;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   MODERN UI (static/index.html — served at "/")
-   ───────────────────────────────────────────────────────────────────────
-   Same skin, different class names. That interface writes the state onto
-   #vorisApp rather than <body>, which is why itachi.js mirrors it to
-   body[data-itachi-state] — every selector above and below keys off the
-   mirror, so one stylesheet serves both front ends.
-   ═══════════════════════════════════════════════════════════════════════ */
-
-body.itachi-active .app-container,
-body.itachi-active .voris-app {
-  position: relative;
-  z-index: 1;
-  background: transparent;
-}
-
-body.itachi-active .main-content,
-body.itachi-active .chat-panel,
-body.itachi-active .chat-viewport,
-body.itachi-active .conversation {
-  background: transparent;
-}
-
-body.itachi-active .sidebar {
-  background: var(--itachi-glass-strong);
-  backdrop-filter: blur(18px) saturate(0.9);
-  -webkit-backdrop-filter: blur(18px) saturate(0.9);
-}
-
-body.itachi-active .status-card {
-  background: rgba(9, 8, 11, 0.55);
-  border: 1px solid var(--itachi-hairline);
-}
-
-body.itachi-active .top-header {
-  background: linear-gradient(
-    to bottom,
-    rgba(5, 5, 6, 0.80) 0%,
-    rgba(5, 5, 6, 0.30) 72%,
-    transparent 100%
-  );
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-bottom: none;
-}
-
-/* message cards get their own glass so text never rides bare footage */
-body.itachi-active .message__card,
-body.itachi-active .welcome-card {
-  background: var(--itachi-glass);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--itachi-hairline);
-  color: var(--itachi-paper);
-}
-
-body.itachi-active .composer {
-  background: var(--itachi-glass-strong);
-  backdrop-filter: blur(20px) saturate(0.9);
-  -webkit-backdrop-filter: blur(20px) saturate(0.9);
-  border-top: 1px solid var(--itachi-hairline);
-}
-
-body.itachi-active .btn--primary {
-  background: linear-gradient(140deg, var(--itachi-ember), #8d0f1c);
-  border: 1px solid rgba(255, 43, 43, 0.42);
-  color: var(--itachi-paper);
-}
-
-body.itachi-active .btn--primary:hover {
-  background: linear-gradient(140deg, var(--itachi-sharingan), #a8121f);
-}
-
-/* ── the orb steps down; the face is the presence now ──
-   The ball is hidden rather than deleted so nothing app.js writes to it
-   can throw, and the caption stays because it is a truthful readout. */
-body.itachi-active .orb-wrapper {
-  display: none;
-}
-
-body.itachi-active .orb-caption {
-  color: var(--itachi-ash);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-}
-
-/* the caption carries the kanji, same single-source-of-truth trick */
-body.itachi-active .orb-caption::before {
-  content: "静";
-  font-family: "Shippori Mincho", "Yu Mincho", serif;
-  font-size: 1.15em;
-  margin-right: 0.5em;
-  color: var(--itachi-ash);
-  transition: color 500ms ease;
-}
-
-body.itachi-active[data-itachi-state="idle"]       .orb-caption::before { content: "静"; }
-body.itachi-active[data-itachi-state="listening"]  .orb-caption::before { content: "聴"; }
-body.itachi-active[data-itachi-state="analyzing"]  .orb-caption::before { content: "析"; }
-body.itachi-active[data-itachi-state="thinking"]   .orb-caption::before { content: "考"; }
-body.itachi-active[data-itachi-state="responding"] .orb-caption::before { content: "応"; }
-body.itachi-active[data-itachi-state="error"]      .orb-caption::before { content: "誤"; }
-
-body.itachi-hot .orb-caption::before,
-body.itachi-hot .orb-caption {
-  color: var(--itachi-sharingan);
+  .itachi-face,
+  .itachi-face__stage,
+  .itachi-face__portrait,
+  .itachi-face__glow,
+  .itachi-door,
+  .itachi-face__close { transition: none !important; }
+  .itachi-face__speech.is-fresh .itachi-face__line { animation: none !important; }
 }

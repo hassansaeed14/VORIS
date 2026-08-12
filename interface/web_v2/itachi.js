@@ -1,33 +1,32 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   VORIS — ITACHI PRESENCE LAYER
+   VORIS — ITACHI, FACE TO FACE
    ───────────────────────────────────────────────────────────────────────
-   The face is the status indicator.
+   Click the orb and Itachi comes forward. You talk to him directly: his
+   face fills the frame, his reply appears beneath him, and his eyes turn
+   red while he is actually working.
 
-   This module renders a frame sequence whose position is driven by the
-   assistant's real state, read from document.body[data-assistant-state].
-   It registers no callbacks into app.js and imports nothing from it — the
-   coupling is one DOM attribute, so app.js stays untouched and this whole
-   feature reverts by removing two files and three tags from voris.html.
-
-   Truth rule (MASTER_SPEC): the face may never claim a state the backend
-   is not actually in. Every frame target below is derived from the state
-   attribute, never from a timer pretending to be work.
+   This is a VIEW over the existing chat, never a second implementation:
+     · the input writes to the real #messageInput and submits the real
+       #composerForm, so auth / history / streaming / routing are reused
+     · the caption mirrors the newest assistant message observed in
+       #conversationThread
+     · the eyes read data-assistant-state, which app.js already writes
+   Nothing here edits app.js. Remove itachi.js + itachi.css to revert.
    ═══════════════════════════════════════════════════════════════════════ */
 (function () {
   "use strict";
 
-  if (window.__VORIS_ITACHI__) return;   // idempotent: safe if loaded twice
+  if (window.__VORIS_ITACHI__) return;
   window.__VORIS_ITACHI__ = true;
 
-  /* ─────────────────────── configuration ─────────────────────── */
+  /* ─────────────────────────── configuration ─────────────────────────── */
 
   const FRAME_DIR = "/static-v2/frames/main";
   const FRAME_COUNT = 71;
 
   /* Shot map, measured from the footage:
-       1–13  eyes closed            24     eyes fully open, calm
-       14–24 opening                25–48  sharingan (extreme close-up, red)
-       49–52 pulling back           53–71  crows                              */
+       1–13  closed        14–24 opening        24 open, calm
+       25–48 sharingan (extreme close-up)       49–71 pull back + crows   */
   const SHOT = {
     CLOSED: 1,
     OPEN: 24,
@@ -37,123 +36,164 @@
     CROWS_OUT: 70,
   };
 
-  /* Where each assistant state parks the playhead.
-     `loop` ranges drift back and forth so a long task never looks frozen. */
   const STATE_FRAMES = {
-    asleep:    { hold: SHOT.CLOSED },
-    idle:      { loop: [1, 12], speed: 0.10 },          // slow breathing
-    listening: { hold: SHOT.OPEN },                     // eyes open, watching
-    analyzing: { hold: SHOT.SHARINGAN_IN },             // red ignites
-    thinking:  { loop: [SHOT.SHARINGAN_IN, SHOT.SHARINGAN_HOT], speed: 0.5 },
-    responding:{ hold: SHOT.OPEN },                     // settled, no red
-    error:     { hold: 52 },                            // red dimming out
+    asleep:     { hold: SHOT.CLOSED },
+    idle:       { loop: [1, 12], speed: 0.10 },
+    listening:  { hold: SHOT.OPEN },
+    analyzing:  { hold: SHOT.SHARINGAN_IN },
+    thinking:   { loop: [SHOT.SHARINGAN_IN, SHOT.SHARINGAN_HOT], speed: 0.5 },
+    responding: { hold: SHOT.OPEN },
+    error:      { hold: 52 },
   };
 
-  /* States where the eyes are red. Used only for CSS accenting. */
   const HOT_STATES = new Set(["analyzing", "thinking"]);
-
-  /* If `thinking` runs longer than this, drift into the crows.
-     Not a fake state — still thinking, just visually deepening. */
   const CROWS_AFTER_MS = 9000;
 
-  /* Idle sleep: he closes his eyes after this long with no interaction,
-     and reopens them the moment you come back. */
-  const SLEEP_AFTER_MS = 90000;
+  /* Wake sequence: closed -> open, played once when he comes forward. */
+  const WAKE_MS = 1500;
 
-  /* Per-frame mean luminance of the bottom 55% of each frame, precomputed
-     at build time. Drives the scrim so chat text keeps its contrast when the
-     footage cuts to the bright sharingan close-up. Index 0 === frame 001. */
-  const LUMA = [
-    0.129, 0.130, 0.131, 0.132, 0.133, 0.134, 0.134, 0.135, 0.135, 0.136,
-    0.136, 0.136, 0.137, 0.139, 0.140, 0.142, 0.143, 0.144, 0.145, 0.147,
-    0.149, 0.151, 0.156, 0.162, 0.177, 0.195, 0.228, 0.255, 0.287, 0.328,
-    0.358, 0.400, 0.425, 0.452, 0.469, 0.478, 0.473, 0.450, 0.428, 0.411,
-    0.390, 0.385, 0.389, 0.404, 0.419, 0.432, 0.439, 0.447, 0.439, 0.374,
-    0.259, 0.221, 0.208, 0.206, 0.200, 0.197, 0.194, 0.201, 0.200, 0.200,
-    0.198, 0.195, 0.195, 0.193, 0.193, 0.195, 0.196, 0.198, 0.192, 0.192,
-    0.194,
-  ];
+  /* Framing. These are the regions that must STAY VISIBLE, not crop boxes.
+     Measured from the footage: on the wide shots his head occupies
+     x 0.26–0.74 with the face centred at (0.50, 0.59); the sharingan frames
+     already fill the frame. A small margin is added so his hair never
+     touches the edge. drawRegion() expands these to the canvas aspect
+     rather than cropping to it, so the head is never clipped at any size. */
+  const HEAD_WIDE = { x0: 0.235, x1: 0.765, y0: 0.00, y1: 1.00 };
+  const HEAD_FULL = { x0: 0.000, x1: 1.000, y0: 0.00, y1: 1.00 };
+  const isCloseUp = (n) => n >= 25 && n <= 48;
 
   const prefersReducedMotion =
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  /* ─────────────────────────── helpers ─────────────────────────── */
 
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const pad3 = (n) => String(n).padStart(3, "0");
 
-  /* ───────────────────────── DOM scaffold ───────────────────────── */
+  /* ───────────────────────────── overlay DOM ─────────────────────────────
+     Built with createElement/textContent only — never innerHTML — so no
+     model or user text can ever be parsed as markup.                      */
 
-  const stage = document.createElement("div");
-  stage.className = "itachi-stage";
-  stage.setAttribute("aria-hidden", "true");
+  const root = document.createElement("div");
+  root.className = "itachi-face";
+  root.setAttribute("role", "dialog");
+  root.setAttribute("aria-modal", "true");
+  root.setAttribute("aria-label", "Face to face with VORIS");
+  root.hidden = true;
+
+  const veil = document.createElement("div");
+  veil.className = "itachi-face__veil";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "itachi-face__close";
+  closeBtn.setAttribute("aria-label", "Leave face to face");
+  closeBtn.textContent = "×";
+
+  const portrait = document.createElement("div");
+  portrait.className = "itachi-face__portrait";
 
   const canvas = document.createElement("canvas");
-  canvas.className = "itachi-stage__canvas";
+  canvas.className = "itachi-face__canvas";
 
-  const scrim = document.createElement("div");
-  scrim.className = "itachi-stage__scrim";
+  const glow = document.createElement("div");
+  glow.className = "itachi-face__glow";
+  portrait.appendChild(canvas);
+  portrait.appendChild(glow);
 
-  const bloom = document.createElement("div");
-  bloom.className = "itachi-stage__bloom";
+  const speech = document.createElement("div");
+  speech.className = "itachi-face__speech";
 
-  stage.appendChild(canvas);
-  stage.appendChild(bloom);
-  stage.appendChild(scrim);
+  const speechName = document.createElement("span");
+  speechName.className = "itachi-face__name";
+  speechName.textContent = "VORIS";
+
+  const speechText = document.createElement("p");
+  speechText.className = "itachi-face__line";
+  speechText.textContent = "";
+
+  speech.appendChild(speechName);
+  speech.appendChild(speechText);
+
+  const bar = document.createElement("form");
+  bar.className = "itachi-face__bar";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "itachi-face__input";
+  input.placeholder = "Speak to him…";
+  input.setAttribute("aria-label", "Message VORIS");
+  input.autocomplete = "off";
+
+  const sendBtn = document.createElement("button");
+  sendBtn.type = "submit";
+  sendBtn.className = "itachi-face__send";
+  sendBtn.textContent = "Send";
+
+  bar.appendChild(input);
+  bar.appendChild(sendBtn);
+
+  const stage = document.createElement("div");
+  stage.className = "itachi-face__stage";
+  stage.appendChild(portrait);
+  stage.appendChild(speech);
+  stage.appendChild(bar);
+
+  root.appendChild(veil);
+  root.appendChild(closeBtn);
+  root.appendChild(stage);
 
   function mount() {
-    document.body.insertBefore(stage, document.body.firstChild);
-    document.body.classList.add("itachi-active");
+    document.body.appendChild(root);
+    bindTriggers();
+    watchThread();
   }
   if (document.body) mount();
   else document.addEventListener("DOMContentLoaded", mount, { once: true });
 
   const ctx = canvas.getContext("2d", { alpha: false });
 
-  /* ───────────────────────── frame loading ─────────────────────────
-     Priority order matters: the closed/opening frames are what the user
-     sees first, so they load before the sharingan and crows. The render
-     loop draws the nearest *loaded* frame, so playback degrades to a
-     coarser sequence while loading rather than stalling.               */
+  /* ───────────────────────────── frames ───────────────────────────── */
 
   const frames = new Array(FRAME_COUNT).fill(null);
   let loadedCount = 0;
+  let preloadStarted = false;
 
   function loadFrame(n) {
     return new Promise((resolve) => {
       const img = new Image();
       img.decoding = "async";
       img.onload = () => { frames[n - 1] = img; loadedCount++; resolve(); };
-      img.onerror = () => { loadedCount++; resolve(); };   // gap, not a crash
+      img.onerror = () => { loadedCount++; resolve(); };
       img.src = `${FRAME_DIR}/${pad3(n)}.jpg`;
     });
   }
 
+  /* Nothing loads until he is actually summoned — the normal chat never
+     pays for 6.6MB of frames it is not showing. */
   async function preload() {
-    const order = [];
-    for (let n = 1; n <= SHOT.OPEN; n++) order.push(n);                  // wake
-    for (let n = SHOT.OPEN + 1; n <= 52; n++) order.push(n);             // red
-    for (let n = 53; n <= FRAME_COUNT; n++) order.push(n);               // crows
+    if (preloadStarted) return;
+    preloadStarted = true;
 
-    await loadFrame(1);                       // paint something immediately
+    const order = [];
+    for (let n = 1; n <= SHOT.OPEN; n++) order.push(n);
+    for (let n = SHOT.OPEN + 1; n <= 52; n++) order.push(n);
+    for (let n = 53; n <= FRAME_COUNT; n++) order.push(n);
+
+    await loadFrame(1);
+    lastDrawn = -1;
     draw(1);
 
-    const CONCURRENCY = 6;
     let cursor = 0;
-    async function worker() {
+    const worker = async () => {
       while (cursor < order.length) {
         const n = order[cursor++];
         if (!frames[n - 1]) await loadFrame(n);
       }
-    }
-    await Promise.all(
-      Array.from({ length: CONCURRENCY }, worker)
-    );
-    stage.classList.add("is-loaded");
+    };
+    await Promise.all(Array.from({ length: 6 }, worker));
+    root.classList.add("is-loaded");
   }
 
-  /* nearest loaded frame to `idx` (1-based), so gaps never stall playback */
   function nearestLoaded(idx) {
     const i = clamp(Math.round(idx), 1, FRAME_COUNT);
     if (frames[i - 1]) return i;
@@ -164,15 +204,38 @@
     return 1;
   }
 
-  /* ───────────────────────── canvas drawing ─────────────────────────
-     Cover-fit, but capped so a tall/narrow window crops toward the face
-     instead of zooming into a nostril.                                  */
+  /* ───────────────────────────── drawing ─────────────────────────────
+     Grow `region` until it matches the canvas aspect, then draw it 1:1.
+
+     Cover-fitting a fixed crop would clip whichever axis is proportionally
+     larger — with a 3/4 portrait that shaved ~3% off each side of his hair.
+     Expanding instead means the head bbox is always fully inside the frame
+     at any window size, and the extra space is filled with real footage
+     (the black surround) rather than letterboxing.                        */
+
+  function expandToAspect(region, iw, ih, canvasAspect) {
+    let { x0, x1, y0, y1 } = region;
+    let w = (x1 - x0) * iw;
+    let h = (y1 - y0) * ih;
+    const cx = ((x0 + x1) / 2) * iw;
+    const cy = ((y0 + y1) / 2) * ih;
+
+    if (w / h < canvasAspect) w = h * canvasAspect;   // too narrow: widen
+    else h = w / canvasAspect;                        // too short: heighten
+
+    /* clamp inside the image, keeping the head centred where possible */
+    w = Math.min(w, iw);
+    h = Math.min(h, ih);
+    let sx = clamp(cx - w / 2, 0, iw - w);
+    let sy = clamp(cy - h / 2, 0, ih - h);
+    return { sx, sy, sw: w, sh: h };
+  }
 
   function fit() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.round(window.innerWidth * dpr);
-    const h = Math.round(window.innerHeight * dpr);
-    if (canvas.width !== w || canvas.height !== h) {
+    const w = Math.round(canvas.offsetWidth * dpr);
+    const h = Math.round(canvas.offsetHeight * dpr);
+    if (w > 0 && h > 0 && (canvas.width !== w || canvas.height !== h)) {
       canvas.width = w;
       canvas.height = h;
       return true;
@@ -190,53 +253,41 @@
 
     const cw = canvas.width;
     const ch = canvas.height;
+    if (!cw || !ch) return;
+
+    const head = isCloseUp(n) ? HEAD_FULL : HEAD_WIDE;
+    const { sx, sy, sw, sh } = expandToAspect(
+      head, img.naturalWidth, img.naturalHeight, cw / ch
+    );
+
     ctx.fillStyle = "#050506";
     ctx.fillRect(0, 0, cw, ch);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
 
-    const ir = img.naturalWidth / img.naturalHeight;
-    let w = cw;
-    let h = cw / ir;
-    if (h < ch) {
-      const s = Math.min(ch / h, 2.0);
-      w *= s;
-      h *= s;
-    }
-    /* bias upward: the face sits in the top two-thirds, so anchoring the
-       crop at the vertical centre would push his eyes off a short window */
-    ctx.drawImage(img, (cw - w) / 2, (ch - h) * 0.34, w, h);
     lastDrawn = n;
-
-    /* scrim strength tracks the footage brightness at this frame */
-    const luma = LUMA[n - 1] ?? 0.2;
-    const opacity = clamp(0.30 + (luma - 0.13) * 1.35, 0.30, 0.88);
-    scrim.style.setProperty("--scrim", opacity.toFixed(3));
   }
 
   /* ───────────────────────── state machine ───────────────────────── */
 
   let state = "idle";
-  let asleep = false;
+  let open = false;
   let stateEnteredAt = performance.now();
-  let lastInteraction = performance.now();
-
-  let playhead = 1;      // eased, fractional
-  let target = 1;
+  let openedAt = 0;
+  let playhead = 1;
   let loopPhase = 0;
 
-  function currentPlan() {
-    if (asleep) return STATE_FRAMES.asleep;
-    return STATE_FRAMES[state] || STATE_FRAMES.idle;
-  }
-
   function computeTarget(now) {
-    const plan = currentPlan();
+    /* the wake: closed -> open, once, on entry */
+    const sinceOpen = now - openedAt;
+    if (open && sinceOpen < WAKE_MS) {
+      const t = clamp(sinceOpen / WAKE_MS, 0, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      return lerp(SHOT.CLOSED, SHOT.OPEN, eased);
+    }
 
-    /* long thinking drifts into the crows — still thinking, shown deeper */
-    if (
-      state === "thinking" &&
-      !asleep &&
-      now - stateEnteredAt > CROWS_AFTER_MS
-    ) {
+    const plan = STATE_FRAMES[state] || STATE_FRAMES.idle;
+
+    if (state === "thinking" && now - stateEnteredAt > CROWS_AFTER_MS) {
       const t = (now / 1400) % 2;
       const k = t < 1 ? t : 2 - t;
       return lerp(SHOT.CROWS_IN, SHOT.CROWS_OUT, k);
@@ -246,8 +297,7 @@
 
     const [a, b] = plan.loop;
     loopPhase += (plan.speed || 0.3) * 0.016;
-    const k = (Math.sin(loopPhase) + 1) / 2;
-    return lerp(a, b, k);
+    return lerp(a, b, (Math.sin(loopPhase) + 1) / 2);
   }
 
   function setState(next) {
@@ -255,115 +305,191 @@
     if (name === state) return;
     state = name;
     stateEnteredAt = performance.now();
-    stage.dataset.state = name;
-    /* Mirror onto <body> under our own attribute name. The source attribute
-       lives on a different element per interface, so the skin's selectors
-       key off this mirror instead — one stylesheet works for both. */
+    root.dataset.state = name;
     document.body.dataset.itachiState = name;
     document.body.classList.toggle("itachi-hot", HOT_STATES.has(name));
-
-    /* any real state change means the system is working for you — wake up */
-    if (name !== "idle") wake();
   }
 
-  function wake() {
-    lastInteraction = performance.now();
-    if (!asleep) return;
-    asleep = false;
-    stage.classList.remove("is-asleep");
-  }
-
-  function sleep() {
-    if (asleep) return;
-    asleep = true;
-    stage.classList.add("is-asleep");
-  }
-
-  /* ───────────────────── observe the real state ─────────────────────
-     The contract is a single attribute: data-assistant-state.
-
-     Which element carries it differs per interface —
-       interface/web_v2/app.js writes it on <body>   (el.body)
-       static/app.js           writes it on #app     (el.app)
-     so rather than hard-coding a host, we observe the whole document and
-     read whichever element currently has the attribute. That keeps this
-     file working unchanged across both front ends.                      */
+  /* ────────────────── read the real state, wherever it lives ──────────────────
+     web_v2/app.js writes data-assistant-state on <body>; static/app.js writes
+     it on #vorisApp. Observe the document and read whichever carries it.   */
 
   function stateHost() {
-    return (
-      document.querySelector("[data-assistant-state]") || document.body
-    );
+    return document.querySelector("[data-assistant-state]") || document.body;
   }
-
   function readState() {
     const host = stateHost();
     return (host && host.dataset.assistantState) || "idle";
   }
 
-  const observer = new MutationObserver(() => setState(readState()));
+  new MutationObserver(() => setState(readState())).observe(
+    document.documentElement,
+    { attributes: true, subtree: true, attributeFilter: ["data-assistant-state"] }
+  );
 
-  function startObserving() {
-    setState(readState());
-    observer.observe(document.documentElement, {
-      attributes: true,
-      subtree: true,
-      attributeFilter: ["data-assistant-state"],
+  /* ─────────────── mirror his newest reply into the caption ───────────────
+     Reads textContent only. Never re-parses model output as HTML.        */
+
+  function newestAssistantText() {
+    const thread =
+      document.getElementById("conversationThread") ||
+      document.querySelector(".conversation, .conversation-thread");
+    if (!thread) return "";
+
+    const rows = thread.children;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const row = rows[i];
+      const cls = row.className || "";
+      if (/\byou\b|--user|__user|is-user/i.test(cls)) continue;
+      const body =
+        row.querySelector(".message__body, .message-card__content, .message__card") ||
+        row;
+      const text = (body.textContent || "").trim();
+      if (text) return text;
+    }
+    return "";
+  }
+
+  let lastLine = "";
+  function syncSpeech() {
+    const text = newestAssistantText();
+    if (!text || text === lastLine) return;
+    lastLine = text;
+    speechText.textContent = text.length > 460 ? text.slice(0, 460) + "…" : text;
+    speech.classList.remove("is-fresh");
+    void speech.offsetWidth;            // restart the entrance
+    speech.classList.add("is-fresh");
+  }
+
+  function watchThread() {
+    const thread =
+      document.getElementById("conversationThread") ||
+      document.querySelector(".conversation, .conversation-thread");
+    if (!thread) return;
+    new MutationObserver(() => { if (open) syncSpeech(); })
+      .observe(thread, { childList: true, subtree: true, characterData: true });
+  }
+
+  /* ─────────────────── send through the real composer ─────────────────── */
+
+  function realComposer() {
+    return {
+      form: document.getElementById("composerForm"),
+      field: document.getElementById("messageInput"),
+    };
+  }
+
+  bar.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const text = input.value.trim();
+    if (!text) return;
+    const { form, field } = realComposer();
+    if (!form || !field) return;
+
+    field.value = text;
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    input.value = "";
+
+    /* submit the real form so every existing handler runs */
+    if (typeof form.requestSubmit === "function") form.requestSubmit();
+    else form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+
+  /* ───────────────────────── open / close ───────────────────────── */
+
+  let lastFocus = null;
+
+  function openFace() {
+    if (open) return;
+    open = true;
+    lastFocus = document.activeElement;
+    root.hidden = false;
+    document.body.classList.add("itachi-face-open");
+    openedAt = performance.now();
+    playhead = SHOT.CLOSED;
+    lastDrawn = -1;
+    preload();
+    requestAnimationFrame(() => {
+      root.classList.add("is-open");
+      fit();
+      syncSpeech();
+      input.focus();
+    });
+    loop();
+  }
+
+  function closeFace() {
+    if (!open) return;
+    open = false;
+    root.classList.remove("is-open");
+    document.body.classList.remove("itachi-face-open");
+    setTimeout(() => { if (!open) root.hidden = true; }, 420);
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  closeBtn.addEventListener("click", closeFace);
+  veil.addEventListener("click", closeFace);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && open) closeFace();
+  });
+
+  /* keep tab focus inside the dialog while it is open */
+  root.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const items = [input, sendBtn, closeBtn];
+    const i = items.indexOf(document.activeElement);
+    if (i === -1) return;
+    e.preventDefault();
+    const next = e.shiftKey ? (i - 1 + items.length) % items.length
+                            : (i + 1) % items.length;
+    items[next].focus();
+  });
+
+  /* ───────────────── the orb is the door ─────────────────
+     Selector list covers both front ends; whichever exists gets wired. */
+
+  function bindTriggers() {
+    const sel = "#vorisOrb, #orbStage, .orb-wrapper, #assistantOrb, .voris-orb";
+    const seen = new Set();
+    document.querySelectorAll(sel).forEach((el) => {
+      if (seen.has(el)) return;
+      seen.add(el);
+      el.classList.add("itachi-door");
+      el.setAttribute("role", "button");
+      el.setAttribute("tabindex", "0");
+      el.setAttribute("title", "Speak with him face to face");
+      el.addEventListener("click", openFace);
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openFace(); }
+      });
     });
   }
-  if (document.body) startObserving();
-  else document.addEventListener("DOMContentLoaded", startObserving, { once: true });
 
-  /* interaction resets the sleep timer */
-  ["pointerdown", "keydown", "pointermove", "focusin"].forEach((evt) => {
-    window.addEventListener(evt, wake, { passive: true });
-  });
+  /* ───────────────────────── render loop ─────────────────────────
+     Runs only while he is present. Closed = zero cost.               */
 
-  /* ─────────────────────────── render loop ─────────────────────────── */
-
-  let running = true;
-  document.addEventListener("visibilitychange", () => {
-    running = !document.hidden;
-    if (running) {
-      lastDrawn = -1;      // force a repaint on return
-      requestAnimationFrame(tick);
-    }
-  });
-
-  function tick() {
-    if (!running) return;
-
+  function loop() {
+    if (!open) return;
     const now = performance.now();
-
-    if (!asleep && now - lastInteraction > SLEEP_AFTER_MS && state === "idle") {
-      sleep();
-    }
-
     if (fit()) lastDrawn = -1;
 
-    target = computeTarget(now);
-
-    if (prefersReducedMotion) {
-      /* no interpolation: snap to the state's frame and hold it */
-      playhead = target;
-    } else {
-      playhead = lerp(playhead, target, 0.09);
-    }
-
+    const target = computeTarget(now);
+    playhead = prefersReducedMotion ? target : lerp(playhead, target, 0.12);
     draw(playhead);
-    requestAnimationFrame(tick);
+
+    requestAnimationFrame(loop);
   }
 
-  /* ─────────────────────────────── boot ─────────────────────────────── */
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && open) { lastDrawn = -1; requestAnimationFrame(loop); }
+  });
 
-  fit();
-  preload();
-  requestAnimationFrame(tick);
+  setState(readState());
 
-  /* Small, deliberate public surface — lets you demo states from the
-     console without a backend: VORIS_ITACHI.demo('thinking') */
   window.VORIS_ITACHI = {
+    open: openFace,
+    close: closeFace,
     demo(name) { stateHost().dataset.assistantState = name; },
-    sleep, wake,
     get state() { return state; },
     get loaded() { return `${loadedCount}/${FRAME_COUNT}`; },
   };
