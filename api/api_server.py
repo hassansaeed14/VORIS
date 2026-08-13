@@ -129,6 +129,7 @@ from voice.voice_controller import (
     transcribe_microphone_request,
     update_voice_preferences,
 )
+from voice.voice_config import list_voice_personas
 from voice.assistant_runtime import get_assistant_runtime_status
 from voice.desktop_voice_runtime import (
     interrupt_desktop_voice,
@@ -274,8 +275,25 @@ class VoiceCaptureRequest(BaseModel):
 
 
 class VoiceSettingsUpdate(BaseModel):
+    """Everything VoiceSettings can persist.
+
+    update_voice_settings() already accepts any field via hasattr, and
+    save_voice_settings() already writes them to the user profile. Only this
+    model and the allowlist in update_voice_preferences() were narrower, so
+    rate/pitch/volume/persona were unreachable from the UI.
+    """
+
     language: Optional[str] = None
     enabled: Optional[bool] = None
+    profile_id: Optional[str] = None
+    voice_gender: Optional[str] = None
+    rate: Optional[float] = None
+    pitch: Optional[float] = None
+    volume: Optional[float] = None
+    wake_words: Optional[list[str]] = None
+    wake_word_sensitivity: Optional[float] = None
+    phrase_time_limit: Optional[int] = None
+    auto_speak_responses: Optional[bool] = None
 
 
 class SecurityActionRequest(BaseModel):
@@ -3948,6 +3966,11 @@ async def interrupt_desktop_voice_endpoint():
 @app.patch("/api/voice/settings")
 async def update_voice_settings_endpoint(settings: VoiceSettingsUpdate):
     return update_voice_preferences(**settings.model_dump(exclude_none=True))
+
+
+@app.get("/api/voice/personas")
+async def list_voice_personas_endpoint():
+    return {"success": True, "personas": list_voice_personas()}
 
 
 @app.post("/api/voice/text")

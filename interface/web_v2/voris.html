@@ -8,9 +8,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Shippori+Mincho:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static-v2/styles.css">
-  <!-- Itachi presence layer. Loaded after styles.css so its scoped rules win.
-       Remove this link + the itachi.js tag below to fully disable the skin. -->
-  <link rel="stylesheet" href="/static-v2/itachi.css">
 </head>
 <body class="voris-page" data-assistant-state="idle" data-orb-layout="topbar" data-task-scope="none">
   <div class="page-backdrop" aria-hidden="true"></div>
@@ -200,7 +197,6 @@
        closures whose distinct handler references both bind to the same
        elements, which sends every message twice. -->
   <script src="/static-v2/app.js"></script>
-  <script src="/static-v2/itachi.js"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {

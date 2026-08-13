@@ -64,12 +64,54 @@ def get_voice_status() -> Dict[str, Any]:
     }
 
 
+_VOICE_UPDATE_FIELDS = {
+    "enabled",
+    "language",
+    "auto_speak_responses",
+    "profile_id",
+    "voice_gender",
+    "rate",
+    "pitch",
+    "volume",
+    "wake_words",
+    "wake_word_sensitivity",
+    "phrase_time_limit",
+}
+
+# Ranges the speech engines actually accept. Values outside these are clamped
+# rather than rejected, so a bad slider can never persist an unusable voice.
+_VOICE_RANGES = {
+    "rate": (0.5, 2.0),
+    "pitch": (0.0, 2.0),
+    "volume": (0.0, 1.0),
+    "wake_word_sensitivity": (0.0, 1.0),
+    "phrase_time_limit": (2, 30),
+}
+
+
+def _coerce_voice_value(key: str, value: object) -> object:
+    if key == "wake_words":
+        words = [str(w).strip().lower() for w in (value or []) if str(w).strip()]
+        return list(dict.fromkeys(words))[:8] or None
+    if key in _VOICE_RANGES:
+        low, high = _VOICE_RANGES[key]
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        number = max(low, min(high, number))
+        return int(number) if key == "phrase_time_limit" else round(number, 3)
+    return value
+
+
 def update_voice_preferences(**updates: object) -> Dict[str, Any]:
-    allowed_updates = {
-        key: value
-        for key, value in updates.items()
-        if key in {"enabled", "language", "auto_speak_responses"} and value is not None
-    }
+    allowed_updates = {}
+    for key, value in updates.items():
+        if key not in _VOICE_UPDATE_FIELDS or value is None:
+            continue
+        coerced = _coerce_voice_value(key, value)
+        if coerced is not None:
+            allowed_updates[key] = coerced
     settings = update_voice_settings(**allowed_updates)
     return {"success": True, "settings": settings.to_dict()}
 
