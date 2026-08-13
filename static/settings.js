@@ -408,18 +408,49 @@
     const img = (imageStatus && imageStatus.image_generation) || {};
     const provider = String(img.provider || "").toLowerCase();
     const imgAvailable = !!img.available;
+    const imgState = String(img.status || "not_configured");
+    const supported = img.supported_providers || [];
+    const implemented = img.implemented_providers || [];
+
+    /* The chip and note report the backend's own status verbatim rather than
+       a guess, so the panel can never claim a provider works when it doesn't. */
+    const IMG_NOTES = {
+      ready: "Image requests go to " + provider + ". Ask for one in chat, or try the button below.",
+      missing_key: "Add POLLINATIONS_API_KEY to your .env file and restart VORIS to turn this on.",
+      adapter_missing:
+        provider + " is selected, but no verified adapter exists for it yet. Switch to Pollinations to generate images now.",
+      not_configured:
+        "No image provider is configured. Add POLLINATIONS_API_KEY to your .env file to enable image generation.",
+    };
 
     const imgChip = imgAvailable
-      ? statusChip("live", provider ? provider : "Live")
-      : statusChip("partial", "Pollinations only");
+      ? statusChip("live", provider)
+      : statusChip(imgState === "not_configured" ? "off" : "partial",
+                   imgState.replace(/_/g, " "));
 
     const images = sectionEl(
       "Images",
       imgChip,
-      imgAvailable
-        ? "Image requests route to the configured provider."
-        : "Image requests are served by Pollinations when your message starts with draw, generate, create or make. No other provider is configured yet."
+      IMG_NOTES[imgState] || img.reason || "Image generation is unavailable."
     );
+
+    if (supported.length) {
+      images.appendChild(selectRow({
+        label: "Provider",
+        value: supported.includes(provider) ? provider : supported[0],
+        options: supported.map((p) => ({
+          value: p,
+          /* say which ones can't actually run, rather than listing them as equals */
+          label: implemented.includes(p) ? p : p + " — no adapter yet",
+        })),
+        onChange: (v) => {
+          localStorage.setItem("voris-image-provider", v);
+          savedNote.className = "vs-saved is-ok";
+          savedNote.textContent = "Set VORIS_IMAGE_PROVIDER=" + v + " in .env to apply";
+        },
+        hint: "Selecting here shows you the option. Set VORIS_IMAGE_PROVIDER in .env to make it permanent.",
+      }));
+    }
 
     images.appendChild(selectRow({
       label: "Size",
