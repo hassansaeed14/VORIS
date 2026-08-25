@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VORIS HUD</title>
+<style>
+  :root {
+    --void: #03060f;
+    --cyan: #8fd4ff;
+    --cyan-dim: #4f7ba3;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--void);
+    color: var(--cyan);
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    overflow: hidden;
+  }
+
+  #stage { position: fixed; inset: 0; z-index: 0; }
+  #stage canvas { display: block; }
+
+  /* All chrome lives in the DOM, not in WebGL: sharper text, selectable,
+     and reachable by a screen reader. */
+  .hud { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+  .hud button, .hud input { pointer-events: auto; }
+
+  /* L4 — centre readout, sitting inside the sphere */
+  .readout {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  /* The readout sits on top of the brightest part of the bloom, so it needs a
+     dark scrim behind it and a dark halo on the glyphs. Without these the
+     subtitle disappears completely once the sphere goes amber. */
+  .readout::before {
+    content: '';
+    position: absolute;
+    inset: -46px -90px;
+    background: radial-gradient(ellipse at center, rgba(2, 6, 15, 0.78), transparent 72%);
+    z-index: -1;
+  }
+
+  .readout .title {
+    margin: 0;
+    font-size: clamp(13px, 1.7vw, 22px);
+    font-weight: 500;
+    letter-spacing: 0.35em;
+    /* letter-spacing pads the right edge; pull it back so text stays centred */
+    text-indent: 0.35em;
+    color: #eaf8ff;
+    text-shadow: 0 0 22px rgba(0, 180, 255, 0.6), 0 1px 10px rgba(0, 0, 0, 0.9);
+  }
+
+  .readout .sub {
+    margin: 10px 0 0;
+    font-size: clamp(7px, 0.7vw, 9px);
+    letter-spacing: 0.28em;
+    text-indent: 0.28em;
+    color: #9dc6e4;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95);
+    min-height: 1em;
+  }
+
+  /* Amber wash follows the sphere through the active states */
+  body[data-state="thinking"] .readout .title,
+  body[data-state="speaking"] .readout .title {
+    color: #fff3dc;
+    text-shadow: 0 0 22px rgba(255, 140, 26, 0.6), 0 1px 10px rgba(0, 0, 0, 0.9);
+  }
+  body[data-state="thinking"] .readout .sub,
+  body[data-state="speaking"] .readout .sub { color: #e2b477; }
+  .readout .title, .readout .sub { transition: color 1s ease, text-shadow 1s ease; }
+
+  /* Faint light band drifting down the screen */
+  .sweep {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 140px;
+    background: linear-gradient(180deg, transparent, rgba(0, 180, 255, 0.05), transparent);
+    animation: drift 7s linear infinite;
+  }
+
+  @keyframes drift {
+    from { transform: translateY(-140px); }
+    to   { transform: translateY(100vh); }
+  }
+
+  .hint {
+    position: absolute;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(79, 123, 163, 0.5);
+  }
+
+  .fallback {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    display: none;
+    place-items: center;
+    padding: 24px;
+    text-align: center;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cyan-dim);
+    background: var(--void);
+  }
+  body[data-gl="failed"] .fallback { display: grid; }
+  body[data-gl="failed"] .hud { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sweep { display: none; }
+    .readout .title, .readout .sub { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+
+<div class="hud">
+  <div class="sweep" aria-hidden="true"></div>
+  <div class="readout" role="status" aria-live="polite">
+    <p class="title" id="hudTitle">System Locked</p>
+    <p class="sub" id="hudSub">awaiting activation</p>
+  </div>
+  <p class="hint" aria-hidden="true">keys 1-4 &middot; locked / listening / processing / responding</p>
+</div>
+
+<div class="fallback">
+  <p>WebGL unavailable &mdash; the HUD cannot render on this display.</p>
+</div>
+
+<!--
+  Three.js is vendored under /static-v2/vendor/three/ rather than installed via
+  npm: this repo has no JS build step, and a local-first assistant should not go
+  blank when the network does.
+-->
+<script type="importmap">
+{
+  "imports": {
+    "three": "/static-v2/vendor/three/three.module.js",
+    "three/addons/": "/static-v2/vendor/three/"
+  }
+}
+</script>
+<script type="module">
+  import('/static-v2/hud.js').catch((err) => {
+    document.body.dataset.gl = 'failed';
+    console.error('[hud] failed to start', err);
+  });
+</script>
+
+</body>
+</html>
