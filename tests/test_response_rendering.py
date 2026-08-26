@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from _support import bypass_first_run_setup
 from brain.response_engine import shape_response_for_task
 from tools import image_generation
 
@@ -15,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ResponseRenderingTests(unittest.TestCase):
     def setUp(self):
+        bypass_first_run_setup(self)
         self.client = TestClient(api_server.app)
 
     def test_stream_endpoint_emits_chunks_and_final_payload(self):

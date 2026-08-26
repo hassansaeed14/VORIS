@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from _support import bypass_first_run_setup
 import brain.core_ai as core_ai
 import brain.runtime_core as runtime_core
 from security.trust_engine import build_permission_response
@@ -1164,6 +1165,7 @@ class TransformationRoutingTests(unittest.TestCase):
 class DocumentAccessAndRateLimitTests(unittest.TestCase):
     def setUp(self):
         api_server.DOCUMENT_RATE_LIMIT_STATE.clear()
+        bypass_first_run_setup(self)
         self.client = TestClient(api_server.app)
 
     def _content_payload(self):

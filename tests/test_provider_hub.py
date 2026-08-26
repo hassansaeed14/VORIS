@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import brain.provider_hub as provider_hub
+from _support import pin_provider_routing
 
 
 def _fake_completion_result(text: str = "OK"):
@@ -14,6 +15,7 @@ def _fake_completion_result(text: str = "OK"):
 
 class ProviderHubTests(unittest.TestCase):
     def setUp(self):
+        pin_provider_routing(self)
         provider_hub.reset_provider_runtime_state()
 
     def test_provider_statuses_cover_major_backends(self):
