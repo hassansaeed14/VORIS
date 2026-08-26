@@ -220,6 +220,23 @@ body {
   text-transform: capitalize;
 }
 
+.capability-list__item span:last-child {
+  color: var(--text-dim);
+  text-transform: capitalize;
+}
+
+/* A placeholder capability is scaffolding, not a working feature. Render it
+   visibly weaker than a real one so the panel cannot be read as a claim. */
+.capability-list__item[data-mode="placeholder"] span:last-child {
+  color: var(--text-dim);
+  opacity: 0.65;
+  font-style: italic;
+}
+
+.capability-list__item[data-mode="real"] span:last-child {
+  color: var(--text-muted);
+}
+
 .sidebar__footer {
   margin-top: auto;
   display: flex;
