@@ -575,10 +575,29 @@
     list.forEach((item) => {
       const li = document.createElement("li");
       li.className = "capability-list__item";
+
       const name = document.createElement("span");
-      name.textContent = item.name || item.id || "Capability";
+      // /api/capabilities returns intent and agent_name. There is no name or
+      // id field, so the previous lookup always fell through to the literal
+      // string "Capability" and every row rendered identically.
+      // intent is listed first because it is unique per row (37 of 37),
+      // whereas agent_name repeats wherever several intents share an agent.
+      name.textContent = item.intent || item.agent_name || "Capability";
+
       const mode = document.createElement("span");
-      mode.textContent = item.mode || item.status || "—";
+      // capability_mode is real / hybrid / placeholder and is the only field
+      // here that carries information. Deliberately no fallback to
+      // item.status: the capability registry sets status to "live" for every
+      // agent regardless of mode, so showing it advertised 14 placeholder
+      // capabilities as live.
+      const capabilityMode = item.capability_mode || "unknown";
+      mode.textContent = capabilityMode;
+      li.dataset.mode = capabilityMode;
+
+      if (item.execution_path) {
+        li.title = `${item.agent_name || ""} — ${item.execution_path}`.trim();
+      }
+
       li.append(name, mode);
       el.capabilityList.appendChild(li);
     });
