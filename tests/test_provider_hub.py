@@ -12,6 +12,20 @@ def _fake_completion_result(text: str = "OK"):
     )
 
 
+def _status_or_unconfigured(statuses, provider):
+    """Treat providers absent from a test's status map as not configured.
+
+    SUPPORTED_PROVIDERS grows over time -- sambanova, openrouter, claude and
+    ollama were all added after these tests were written. Indexing a partial
+    dict directly means every such addition breaks unrelated tests with a
+    KeyError, which is what happened here.
+    """
+    return statuses.get(provider) or provider_hub.ProviderStatus(
+        provider, "x", "hybrid", False, False, True, "missing",
+        status=provider_hub.STATUS_NOT_CONFIGURED,
+    )
+
+
 class ProviderHubTests(unittest.TestCase):
     def setUp(self):
         provider_hub.reset_provider_runtime_state()
@@ -248,7 +262,7 @@ class ProviderHubTests(unittest.TestCase):
             "openai": provider_hub.ProviderStatus("openai", "gpt-4o-mini", "real", True, True, True, "healthy", status=provider_hub.STATUS_HEALTHY),
         }
 
-        with patch.object(provider_hub, "get_provider_status", side_effect=lambda provider, fresh=False: statuses[provider]), patch.object(
+        with patch.object(provider_hub, "get_provider_status", side_effect=lambda provider, fresh=False: _status_or_unconfigured(statuses, provider)), patch.object(
             provider_hub.provider_hub,
             "generate_with_provider",
             side_effect=lambda provider, messages, max_tokens, temperature: {
@@ -290,7 +304,7 @@ class ProviderHubTests(unittest.TestCase):
                 "status": provider_hub.STATUS_HEALTHY,
             }
 
-        with patch.object(provider_hub, "get_provider_status", side_effect=lambda provider, fresh=False: statuses[provider]), patch.object(
+        with patch.object(provider_hub, "get_provider_status", side_effect=lambda provider, fresh=False: _status_or_unconfigured(statuses, provider)), patch.object(
             provider_hub.provider_hub,
             "generate_with_provider",
             side_effect=fake_generate,
@@ -303,8 +317,11 @@ class ProviderHubTests(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(result["provider"], "gemini")
-        self.assertEqual(result["attempts"][0]["provider"], "groq")
-        self.assertEqual(result["attempts"][0]["status"], provider_hub.STATUS_UNAVAILABLE)
+        # PROVIDER_PRIORITY leads with sambanova, so groq is no longer the
+        # first attempt. What this test is actually about is that groq was
+        # tried and reported unavailable before gemini answered.
+        groq_attempt = next(a for a in result["attempts"] if a["provider"] == "groq")
+        self.assertEqual(groq_attempt["status"], provider_hub.STATUS_UNAVAILABLE)
 
     def test_generate_with_best_provider_skips_rate_limited_primary_and_uses_groq(self):
         statuses = {
@@ -328,7 +345,7 @@ class ProviderHubTests(unittest.TestCase):
                 }
             raise AssertionError("OpenAI should be skipped while rate limited")
 
-        with patch.object(provider_hub, "get_provider_status", side_effect=lambda provider, fresh=False: statuses[provider]), patch.object(
+        with patch.object(provider_hub, "get_provider_status", side_effect=lambda provider, fresh=False: _status_or_unconfigured(statuses, provider)), patch.object(
             provider_hub.provider_hub,
             "generate_with_provider",
             side_effect=fake_generate,
@@ -395,7 +412,7 @@ class ProviderHubTests(unittest.TestCase):
             "openai": provider_hub.ProviderStatus("openai", "gpt-4o-mini", "real", True, True, True, "healthy", status=provider_hub.STATUS_HEALTHY),
         }
 
-        with patch.object(provider_hub, "get_provider_status", side_effect=lambda provider, fresh=False: statuses[provider]), patch.object(
+        with patch.object(provider_hub, "get_provider_status", side_effect=lambda provider, fresh=False: _status_or_unconfigured(statuses, provider)), patch.object(
             provider_hub.provider_hub,
             "generate_with_provider",
         ) as generate_mock:

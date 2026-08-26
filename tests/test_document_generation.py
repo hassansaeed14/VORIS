@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from tests.support import SetupGateBypassMixin
 import brain.core_ai as core_ai
 import brain.runtime_core as runtime_core
 from security.trust_engine import build_permission_response
@@ -1161,8 +1162,9 @@ class TransformationRoutingTests(unittest.TestCase):
         self.assertEqual(topic, "Source Material")
 
 
-class DocumentAccessAndRateLimitTests(unittest.TestCase):
+class DocumentAccessAndRateLimitTests(SetupGateBypassMixin, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         api_server.DOCUMENT_RATE_LIMIT_STATE.clear()
         self.client = TestClient(api_server.app)
 

@@ -6,6 +6,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from tests.support import SetupGateBypassMixin
 import brain.core_ai as core_ai
 import brain.runtime_core as runtime_core
 import security.enforcement as enforcement
@@ -13,7 +14,7 @@ import security.otp_manager as otp_manager
 import security.session_manager as session_manager
 
 
-class SecuritySystemTests(unittest.TestCase):
+class SecuritySystemTests(SetupGateBypassMixin, unittest.TestCase):
     def test_describe_login_session_returns_expiry_details(self):
         with TemporaryDirectory() as temp_dir:
             sessions_path = Path(temp_dir) / "sessions.json"

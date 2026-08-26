@@ -4,10 +4,12 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from tests.support import SetupGateBypassMixin
 
 
-class PublicAccessTests(unittest.TestCase):
+class PublicAccessTests(SetupGateBypassMixin, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         self.client = TestClient(api_server.app)
 
     def test_home_page_is_public_after_setup(self):

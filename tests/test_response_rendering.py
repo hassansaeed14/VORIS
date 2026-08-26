@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from tests.support import SetupGateBypassMixin
 from brain.response_engine import shape_response_for_task
 from tools import image_generation
 
@@ -13,8 +14,9 @@ from tools import image_generation
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class ResponseRenderingTests(unittest.TestCase):
+class ResponseRenderingTests(SetupGateBypassMixin, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         self.client = TestClient(api_server.app)
 
     def test_stream_endpoint_emits_chunks_and_final_payload(self):

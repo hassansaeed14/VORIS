@@ -4,10 +4,12 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from tests.support import SetupGateBypassMixin
 
 
-class ApiProviderStatusTests(unittest.TestCase):
+class ApiProviderStatusTests(SetupGateBypassMixin, unittest.TestCase):
     def setUp(self):
+        super().setUp()
         api_server.PROVIDER_HEALTH_CACHE.update(
             {
                 "checked_at_ts": 0.0,
