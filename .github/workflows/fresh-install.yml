@@ -1,0 +1,84 @@
+name: Fresh installation
+
+# Proves the install instructions actually work on a clean machine, from the
+# committed manifest only. tests.yml runs the suite; this runs the README.
+#
+# The probe asserts /setup returns 200, NOT a healthy-app endpoint. A genuinely
+# fresh install has no owner user, so requires_first_run_setup() is true and
+# aura_private_access_middleware 503s every /api/ route and redirects every
+# other route to /setup. On a clean box /api/system/health returns 503 and
+# /ping returns 302 -- both by design. "Boots and presents setup" is the
+# correct success condition here.
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'      # Mondays 04:17 UTC
+  workflow_dispatch:
+  push:
+    paths:
+      - 'requirements.txt'
+      - 'run_voris.py'
+      - 'config/server.json'
+      - '.github/workflows/fresh-install.yml'
+
+jobs:
+  fresh-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false        # report every version, not just the first failure
+      matrix:
+        # README.md states "Python 3.10+ (3.11 and 3.12 are both fine)".
+        # This matrix is what makes that claim true or false.
+        python-version: ['3.10', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev python3-dev
+
+      - name: Create a clean virtual environment
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install from the committed manifest
+        run: .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Verify the manifest declares what the app imports
+        run: |
+          # run_voris.py imports a2wsgi and waitress at module scope; if either
+          # is missing from requirements.txt the app cannot boot at all.
+          .venv/bin/python -c "import a2wsgi, waitress; print('entry-point deps OK')"
+
+      - name: Boot and probe
+        run: |
+          .venv/bin/python run_voris.py > server.log 2>&1 &
+          echo $! > server.pid
+          for i in $(seq 1 45); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/setup || true)
+            if [ "$code" = "200" ]; then
+              echo "Fresh install booted and served /setup on attempt $i"
+              kill "$(cat server.pid)" 2>/dev/null || true
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Server did not serve /setup within 90s (last code: ${code:-none})"
+          kill "$(cat server.pid)" 2>/dev/null || true
+          exit 1
+
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log-py${{ matrix.python-version }}
+          path: server.log
+          if-no-files-found: ignore

@@ -4,10 +4,12 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from _support import bypass_first_run_setup
 
 
 class ApiProviderStatusTests(unittest.TestCase):
     def setUp(self):
+        bypass_first_run_setup(self)
         api_server.PROVIDER_HEALTH_CACHE.update(
             {
                 "checked_at_ts": 0.0,

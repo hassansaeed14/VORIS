@@ -12,7 +12,7 @@ class SecurityEndToEndSmokeTests(unittest.TestCase):
         # Approvals live in ACTION_APPROVAL_FILE; login sessions live in
         # SESSIONS_FILE (renamed from the legacy ``SESSION_FILE``). Isolate
         # both so the smoke test never touches the real on-disk store.
-        temp_root = Path(mkdtemp(dir=r"D:\HeyGoku"))
+        temp_root = Path(mkdtemp())
         with patch.object(session_manager, "ACTION_APPROVAL_FILE", temp_root / "action_approvals.json"), \
              patch.object(session_manager, "SESSIONS_FILE", temp_root / "sessions.json"):
             session_manager.approve_action("security-e2e", "screenshot", minutes=5)

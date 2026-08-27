@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 
-PROJECT_ROOT = Path("D:/HeyGoku").resolve()
+PROJECT_ROOT = Path(os.getenv("VORIS_PROJECT_ROOT") or Path(__file__).resolve().parents[1]).resolve()
 
 try:
     import psutil  # type: ignore

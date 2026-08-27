@@ -6,6 +6,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from _support import bypass_first_run_setup
 import brain.core_ai as core_ai
 import brain.runtime_core as runtime_core
 import security.enforcement as enforcement
@@ -14,6 +15,9 @@ import security.session_manager as session_manager
 
 
 class SecuritySystemTests(unittest.TestCase):
+    def setUp(self):
+        bypass_first_run_setup(self)
+
     def test_describe_login_session_returns_expiry_details(self):
         with TemporaryDirectory() as temp_dir:
             sessions_path = Path(temp_dir) / "sessions.json"

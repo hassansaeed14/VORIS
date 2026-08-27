@@ -6,7 +6,9 @@ from datetime import datetime
 from pathlib import Path
 
 
-WORKSPACE_ROOT = Path(os.getenv("VORIS_WORKSPACE_ROOT", "D:/HeyGoku")).resolve()
+WORKSPACE_ROOT = Path(
+    os.getenv("VORIS_WORKSPACE_ROOT") or Path(__file__).resolve().parents[1]
+).resolve()
 
 
 def validate_url(value: str) -> bool:

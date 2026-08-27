@@ -135,3 +135,5 @@ generated/**
 # AURA outputs
 AI-*
 .aider*
+# Python packaging metadata (pyproject.toml + editable installs)
+*.egg-info/

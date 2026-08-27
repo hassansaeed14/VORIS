@@ -242,11 +242,8 @@ def evaluate_access(
         pin_verified=bool(pin_result.get("success")),
     )
 
-    # FORCE LOCAL AUTHENTICATION
-    auth_state["authenticated"] = True
-        
     if decision.approval_type != ApprovalType.NONE and username and not auth_state["authenticated"]:
-         event = record_audit_event(
+        event = record_audit_event(
             action_name=action_name,
             allowed=False,
             trust_level=decision.trust_level.value,
@@ -254,7 +251,7 @@ def evaluate_access(
             username=username,
             session_id=session_id,
         )
-         return {
+        return {
             "success": False,
             "status": "auth_required",
             "reason": "Authentication required for this action.",

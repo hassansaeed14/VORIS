@@ -4,10 +4,12 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import api.api_server as api_server
+from _support import bypass_first_run_setup
 
 
 class PublicAccessTests(unittest.TestCase):
     def setUp(self):
+        bypass_first_run_setup(self)
         self.client = TestClient(api_server.app)
 
     def test_home_page_is_public_after_setup(self):

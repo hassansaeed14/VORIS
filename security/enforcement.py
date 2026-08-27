@@ -202,9 +202,6 @@ def enforce_action(
     )
 
     auth_state = {"authenticated": bool(active_session), "session": active_session}
-    
-    # FORCE LOCAL AUTHENTICATION
-    auth_state["authenticated"] = True
     if require_auth and decision.approval_type != ApprovalType.NONE and not auth_state.get("authenticated"):
         event = record_audit_event(
             action_name=action_key,
