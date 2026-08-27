@@ -1,0 +1,35 @@
+# Optional dependency extras for VORIS.
+#
+# Scope note: this file deliberately does NOT take over dependency management.
+# Base dependencies still live in requirements.txt, and CI still installs with
+# `pip install -r requirements.txt`. Curating those 149 packages into a real
+# manifest is a separate change with its own risk; folding it into a feature
+# branch would make both harder to review.
+#
+# `packages = []` below is intentional: most top-level directories (api, brain,
+# tools, ...) have no __init__.py and are imported from the working directory,
+# so setuptools auto-discovery would fail. Nothing here is meant to be
+# installed as a distribution -- this exists so optional feature groups can be
+# installed with `pip install -e ".[media]"`.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voris"
+version = "0.1.0"
+description = "Voice-Oriented Responsive Intelligence System"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+# Local image generation. The generation backend itself is a compiled
+# stable-diffusion.cpp binary (MIT) invoked as a subprocess, not a Python
+# package, so the only Python requirement is the model downloader.
+media = [
+  "huggingface-hub>=0.24,<1",
+]
+
+[tool.setuptools]
+packages = []

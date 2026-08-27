@@ -178,6 +178,26 @@ Limitations:
 
 - Automation remains fragile around window focus, local app availability, and environment differences.
 
+## Local Media Generation
+
+Status: HYBRID
+
+Evidence:
+
+- `tools/media_generation.py` invokes stable-diffusion.cpp (MIT) as a subprocess, never as a Python import, matching the Piper TTS aggregation boundary.
+- Weights are FLUX.1-schnell only (Apache-2.0). Every file and its licence URL is recorded in `docs/MODEL_LICENSES.md`, including the `ae.safetensors` filename collision with the non-commercial FLUX.1-dev VAE.
+- `preflight()` reports each missing file with its size and the exact `huggingface-cli` command, so a missing 6.8GB weight is reported before generation rather than after.
+- Generation returns a job id immediately and runs on a worker thread; progress is polled at `/api/media/job`. Verified: preflight, the not-installed path, and the video refusal all return correctly on this host.
+- Registered as the agent tool `media.image` with `capability_mode = "hybrid"`.
+
+Limitations:
+
+- **No image has been generated on this machine.** The subprocess path is implemented but unexercised end to end: the backend binary is absent (no C/C++ toolchain is installed to build it) and the weights are a ~12GB download that has not been made. There are therefore **no measured generation times**. This is why the status is HYBRID and not REAL; it moves to REAL only after a generation completes here and the timing is recorded.
+- Expected performance is an estimate, not a measurement. The target host is an Intel Iris Xe integrated GPU with no CUDA device, 15.6GB of shared system RAM, and a 13th-gen i7-1360P. FLUX.1-schnell at Q4 with a fp8 T5 encoder should fit, but on a CPU backend a 512x512 4-step image is expected to take minutes, not seconds.
+- **Video generation is not implemented and will not run on this hardware.** Wan2.2 and LTX-Video are both licence-clean (Apache-2.0) but are CUDA-first and want roughly 12-24GB of VRAM. `generate_video()` returns an explicit `unsupported_hardware` result naming the requirement and what was detected, rather than queueing a job that would exhaust memory or never finish. It is deliberately not registered as an agent tool, so it adds no capability row to the UI.
+- Progress is polled rather than pushed. This codebase has no WebSocket; adding one solely for progress would have been new plumbing for a job measured in minutes.
+- Jobs are held in memory and capped at 50. They do not survive a restart.
+
 ## Screen Awareness
 
 Status: HYBRID

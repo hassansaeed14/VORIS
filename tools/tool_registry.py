@@ -3,7 +3,16 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Callable, Dict, Optional
 
-from tools import browser_tools, datetime_tools, execution_tools, file_tools, process_tools, system_tools, validation_tools
+from tools import (
+    browser_tools,
+    datetime_tools,
+    execution_tools,
+    file_tools,
+    media_generation,
+    process_tools,
+    system_tools,
+    validation_tools,
+)
 
 
 @dataclass(frozen=True)
@@ -34,6 +43,11 @@ TOOL_REGISTRY: Dict[str, ToolRecord] = {
     "browser.search": ToolRecord("browser.search", "web_search", "safe", "real", ("query",), browser_tools.search_query),
     "browser.open": ToolRecord("browser.open", "web_search", "safe", "real", ("value",), browser_tools.open_url),
     "execution.command": ToolRecord("execution.command", "system_control", "critical", "real", ("command",), execution_tools.execute_command),
+    # "hybrid": the subprocess path is fully implemented, but it has not been
+    # run end to end on this host -- the weights are a ~12GB download that is
+    # not present. media_generation.preflight() reports exactly what is
+    # missing. Marked real only once a generation has actually completed here.
+    "media.image": ToolRecord("media.image", "media_generate", "sensitive", "hybrid", ("prompt",), media_generation.generate_image),
 }
 
 

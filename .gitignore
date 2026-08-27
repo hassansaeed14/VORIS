@@ -135,3 +135,9 @@ generated/**
 # AURA outputs
 AI-*
 .aider*
+
+# Local model weights and compiled generation backends.
+# A Flux checkpoint plus text encoders is ~12GB. Never commit these,
+# and do not add them to git-lfs either.
+models/
+models/**
