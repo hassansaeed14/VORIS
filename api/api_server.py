@@ -157,6 +157,7 @@ from tools.image_generation import (
     generate_image,
     get_image_generation_status,
 )
+from tools import media_generation
 from tools.content_extractor import extract_content
 from brain.response_engine import generate_transformation_content_payload
 from tools.desktop_controller import get_supported_desktop_apps
@@ -1782,6 +1783,8 @@ PUBLIC_PATHS = {
     "/api/generate/document",
     "/api/generate/image",
     "/api/image/status",
+    "/api/media/status",
+    "/api/media/job",
     "/api/transform",
     "/api/transform/file",
 }
@@ -1808,7 +1811,7 @@ async def aura_request_metrics_middleware(request: Request, call_next):
 @app.middleware("http")
 async def aura_private_access_middleware(request: Request, call_next):
     path = request.url.path
-    if path.startswith("/static") or path.startswith("/assets") or path.startswith("/downloads") or path.startswith("/generated-images"):
+    if path.startswith("/static") or path.startswith("/assets") or path.startswith("/downloads") or path.startswith("/generated-images") or path.startswith("/generated-media"):
         return await call_next(request)
 
     setup_required = requires_first_run_setup()
@@ -3186,6 +3189,42 @@ async def serve_generated_image(file_name: str):
         raise HTTPException(status_code=404, detail="Image not found.")
     media_type = "image/jpeg" if image_path.suffix.lower() in {".jpg", ".jpeg"} else "image/webp" if image_path.suffix.lower() == ".webp" else "image/png"
     return FileResponse(image_path, media_type=media_type)
+
+
+@app.get("/api/media/status")
+async def api_media_status():
+    """Backend + weight availability, including what is missing and how to get it."""
+    return JSONResponse(content={"success": True, "status": "ok",
+                                 "media_generation": media_generation.get_media_generation_status()})
+
+
+@app.get("/api/media/job")
+async def api_media_job(job_id: str = ""):
+    """Progress for one generation.
+
+    Polling rather than a push: this codebase has no WebSocket, and adding one
+    purely for progress would be new plumbing for a job that finishes in
+    minutes. The job id is returned by media_generation.generate_image().
+
+    A query parameter rather than a path segment so the route is an exact
+    string in PUBLIC_PATHS; that set is matched by equality, and a path
+    parameter would never match it.
+    """
+    job = media_generation.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return JSONResponse(content={"success": True, "status": "ok", "job": job})
+
+
+@app.get("/generated-media/{file_name}")
+async def serve_generated_media(file_name: str):
+    safe_name = Path(file_name or "").name
+    if safe_name != file_name or not safe_name.startswith("img-"):
+        raise HTTPException(status_code=404, detail="Media not found.")
+    media_path = media_generation.GENERATED_MEDIA_DIR / safe_name
+    if not media_path.is_file():
+        raise HTTPException(status_code=404, detail="Media not found.")
+    return FileResponse(media_path, media_type="image/png")
 
 
 @app.get("/history")

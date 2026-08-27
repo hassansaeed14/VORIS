@@ -82,8 +82,13 @@ content = [
 # import that requirements.txt does not pin.
 system = ["psutil>=5.9,<8"]
 
+# Local image generation. The generation backend itself is a compiled
+# stable-diffusion.cpp binary (MIT) invoked as a subprocess, not a Python
+# package, so the only Python requirement is the model downloader.
+media = ["huggingface-hub>=0.24,<1"]
+
 all = [
-    "voris[groq,openai,google,voice,content,system]",
+    "voris[groq,openai,google,voice,content,system,media]",
 ]
 
 [tool.setuptools]
