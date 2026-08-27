@@ -34,5 +34,9 @@ jobs:
           node --check interface/web_v2/auth.js
 
       - name: Run tests
+        # run_tests.py, not `unittest discover -s tests`: discover reaches only
+        # the 35 modules under tests/ and silently skips the 16 in
+        # security/tests/ and 4 in agents/experimental/tests/, because neither
+        # is an importable package. That hid a real failing security test.
         run: |
-          python -m unittest discover -s tests -p "test_*.py"
+          python run_tests.py

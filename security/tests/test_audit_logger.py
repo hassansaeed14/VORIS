@@ -9,7 +9,7 @@ import security.audit_logger as audit_logger
 
 class AuditLoggerTests(unittest.TestCase):
     def test_record_audit_event_writes_jsonl_entry(self):
-        temp_root = Path(mkdtemp(dir=r"D:\HeyGoku"))
+        temp_root = Path(mkdtemp())
         with patch.object(audit_logger, "AUDIT_LOG_FILE", temp_root / "audit.jsonl"):
             event = audit_logger.record_audit_event(
                 action_name="file_delete",

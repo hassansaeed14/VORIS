@@ -11,7 +11,7 @@ class SessionManagerTests(unittest.TestCase):
         # Action approvals are persisted via ``ACTION_APPROVAL_FILE``; the old
         # test patched ``SESSION_FILE`` (renamed to ``SESSIONS_FILE``) which
         # was never the right target for approve_action/is_action_approved.
-        temp_dir = mkdtemp(dir=r"D:\HeyGoku")
+        temp_dir = mkdtemp()
         approval_file = Path(temp_dir) / "action_approvals.json"
         sessions_file = Path(temp_dir) / "sessions.json"
         with patch.object(session_manager, "ACTION_APPROVAL_FILE", approval_file), \

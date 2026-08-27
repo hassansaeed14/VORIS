@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 
 PROJECT_NAME = "VORIS"
 FULL_PROJECT_NAME = "Voice-Oriented Responsive Intelligence System"
 PROJECT_TYPE = "JARVIS-style AI assistant system"
-PROJECT_ROOT = r"D:\HeyGoku"
+# Derived from this file's location so it stays true on any machine; this
+# value is reported to the API as "project_root". Override: VORIS_PROJECT_ROOT.
+PROJECT_ROOT = os.getenv("VORIS_PROJECT_ROOT") or str(Path(__file__).resolve().parents[1])
 
 CORE_GOALS = (
     "understand_natural_language",

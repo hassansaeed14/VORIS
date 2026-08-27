@@ -8,7 +8,7 @@ import security.pin_manager as pin_manager
 
 class PinManagerTests(unittest.TestCase):
     def test_pin_can_be_set_and_verified(self):
-        temp_dir = mkdtemp(dir=r"D:\HeyGoku")
+        temp_dir = mkdtemp()
         with patch.object(pin_manager, "PIN_STATE_FILE", Path(temp_dir) / "pin.json"):
             set_result = pin_manager.set_pin("1234")
             verify_result = pin_manager.verify_pin("1234")
