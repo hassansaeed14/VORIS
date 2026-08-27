@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voris"
+version = "0.1.0"
+description = "Voice-Oriented Responsive Intelligence System - a local-first JARVIS-style AI assistant"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Hassan Saeed", email = "19hsnkhan@gmail.com" }]
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE"]
+
+# Direct dependencies only. requirements.txt stays the pinned, fully-resolved
+# environment (149 packages including transitives) and is what CI installs from;
+# this section records what VORIS actually imports and why.
+#
+# Measured, not guessed: an AST scan of all 404 .py files found third-party
+# imports resolving to 24 distributions out of the 149 pinned. The other 125 are
+# transitive or leftovers -- the streamlit/altair/pydeck/matplotlib cluster and
+# all of langchain/langgraph are pinned but imported nowhere.
+#
+# Ranges rather than exact pins here: the floor is the version VORIS is known to
+# run against, the ceiling stops a major release breaking the build. Exact pins
+# live in requirements.txt, which is the reproducible artefact.
+
+dependencies = [
+    # Web layer. a2wsgi + waitress are what run_voris.py imports at module
+    # scope, so the app cannot boot without them.
+    "fastapi>=0.136.1,<1",
+    "uvicorn>=0.46.0,<1",
+    "waitress>=3.0.2,<4",
+    "a2wsgi>=1.10.10,<2",
+    "python-multipart>=0.0.28,<1",   # FastAPI form/upload parsing
+
+    # Core runtime
+    "pydantic>=2.12.5,<3",
+    "python-dotenv>=1.2.1,<2",
+    "requests>=2.32.5,<3",
+
+    # Security. Not optional: bcrypt backs password hashing in auth_manager and
+    # cryptography backs encryption_utils, both on the critical path.
+    "bcrypt>=5.0.0,<6",
+    "cryptography>=46.0.5,<47",
+]
+
+[project.optional-dependencies]
+# LLM providers. VORIS routes across these via brain/provider_hub.py; the
+# priority order in config/settings.py degrades to whichever are configured, so
+# none is individually required.
+groq = ["groq>=1.2.0,<2"]
+openai = ["openai>=2.36.0,<3"]
+google = [
+    "google-genai>=1.66.0,<2",
+    "google-generativeai>=0.8.6,<1",
+    "google-ai-generativelanguage>=0.6.15,<1",
+    "google-api-core>=2.25.2,<3",
+    "google-auth>=2.49.0,<3",
+    "googleapis-common-protos>=1.73.0,<2",
+    "protobuf>=5.29.6,<6",
+]
+
+# Voice pipeline: voice/ and interface/web_v2/jarvis_core.py.
+# numpy and scipy are here rather than in the base set because nothing outside
+# the audio path imports them.
+voice = [
+    "sounddevice>=0.5.5,<1",
+    "SpeechRecognition>=3.16.1,<4",
+    "numpy>=2.3.5,<3",
+    "scipy>=1.16.3,<2",
+]
+
+# Document generation, content extraction and screen capture.
+content = [
+    "pillow>=11.3.0,<12",
+    "beautifulsoup4>=4.14.3,<5",
+]
+
+# Host telemetry. tools/system_tools.py imports psutil inside a try/except and
+# degrades to None, so this is genuinely optional -- and it is the one direct
+# import that requirements.txt does not pin.
+system = ["psutil>=5.9,<8"]
+
+all = [
+    "voris[groq,openai,google,voice,content,system]",
+]
+
+[tool.setuptools]
+# VORIS is run from a checkout rather than installed as a distribution; this
+# metadata exists to declare dependencies honestly, not to build a wheel.
+packages = []
