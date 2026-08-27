@@ -273,4 +273,19 @@ See `ROADMAP.md` for the full plan.
 
 ## License / Status
 
-No license file is currently present. Until a license is added, this repository should be treated as private/all-rights-reserved by default.
+`SPDX-License-Identifier: LicenseRef-Proprietary`
+
+VORIS is **source-available, not open source**. See [LICENSE](LICENSE) for the
+full terms.
+
+- Free for personal, educational and research use.
+- Derivatives must carry the same terms.
+- Commercial use -- use in a paid product, providing paid services with it, or
+  any other revenue-generating activity -- requires a separate commercial
+  license.
+
+`LicenseRef-Proprietary` is SPDX's form for a custom license with no registered
+identifier. It tells a license scanner "custom terms, read LICENSE" rather than
+letting it guess, which is what an absent identifier invites.
+
+Commercial licensing enquiries: see the contact address in [LICENSE](LICENSE).
