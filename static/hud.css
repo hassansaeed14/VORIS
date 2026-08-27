@@ -1,0 +1,212 @@
+/* VORIS HUD — fullscreen sphere overlay above the Control Deck workspace. */
+
+.voris-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: #03060f;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  cursor: pointer;
+}
+
+.voris-hud[hidden] {
+  display: none;
+}
+
+body.voris-hud-active {
+  overflow: hidden;
+}
+
+.voris-hud__stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.voris-hud__stage canvas {
+  display: block;
+}
+
+/* Chrome is a DOM overlay rather than WebGL text: sharper, selectable and
+   reachable by a screen reader. */
+.voris-hud__chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.voris-hud__readout,
+.voris-hud__panel {
+  pointer-events: auto;
+  cursor: default;
+}
+
+/* ------------------------------------------------------------ centre readout */
+
+.voris-hud__readout {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  text-transform: uppercase;
+  max-width: min(70vw, 640px);
+}
+
+/* The readout sits on the brightest part of the bloom, so it needs a scrim and
+   a dark halo or the subtitle disappears entirely once the sphere goes amber. */
+.voris-hud__readout::before {
+  content: "";
+  position: absolute;
+  inset: -46px -90px;
+  background: radial-gradient(ellipse at center, rgba(2, 6, 15, 0.78), transparent 72%);
+  z-index: -1;
+}
+
+.voris-hud__title {
+  margin: 0;
+  font-size: clamp(13px, 1.7vw, 22px);
+  font-weight: 500;
+  letter-spacing: 0.35em;
+  text-indent: 0.35em; /* letter-spacing pads the right edge; recentre */
+  color: #eaf8ff;
+  text-shadow: 0 0 22px rgba(0, 180, 255, 0.6), 0 1px 10px rgba(0, 0, 0, 0.9);
+  transition: color 1s ease, text-shadow 1s ease;
+}
+
+.voris-hud__sub {
+  margin: 10px 0 0;
+  font-size: clamp(7px, 0.7vw, 9px);
+  letter-spacing: 0.28em;
+  text-indent: 0.28em;
+  color: #9dc6e4;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95);
+  min-height: 1em;
+  transition: color 1s ease;
+}
+
+.voris-hud__speech {
+  margin: 18px 0 0;
+  font-size: clamp(9px, 0.85vw, 12px);
+  letter-spacing: 0.06em;
+  text-transform: none;
+  line-height: 1.7;
+  color: #cfe6f7;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.95);
+}
+
+/* Amber wash tracks the sphere through the active states. */
+.voris-hud[data-state="thinking"] .voris-hud__title,
+.voris-hud[data-state="speaking"] .voris-hud__title {
+  color: #fff3dc;
+  text-shadow: 0 0 22px rgba(255, 140, 26, 0.6), 0 1px 10px rgba(0, 0, 0, 0.9);
+}
+
+.voris-hud[data-state="thinking"] .voris-hud__sub,
+.voris-hud[data-state="speaking"] .voris-hud__sub {
+  color: #e2b477;
+}
+
+/* -------------------------------------------------------------- side panel */
+
+.voris-hud__panel {
+  position: absolute;
+  left: 6%;
+  top: 34%;
+  width: 264px;
+  background: rgba(8, 20, 44, 0.55);
+  border: 1px solid rgba(0, 180, 255, 0.22);
+  backdrop-filter: blur(2px);
+  font-size: 10px;
+  line-height: 1.9;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #4f7ba3;
+}
+
+.voris-hud__panel[hidden] {
+  display: none;
+}
+
+.voris-hud__panel h3 {
+  margin: 0;
+  padding: 7px 12px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: #8fd4ff;
+  background: rgba(0, 140, 220, 0.16);
+  border-bottom: 1px solid rgba(0, 180, 255, 0.2);
+}
+
+.voris-hud__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px;
+}
+
+.voris-hud__k {
+  flex: 1;
+}
+
+.voris-hud__v {
+  color: #c9e9ff;
+}
+
+.voris-hud__v[data-status="degraded"],
+.voris-hud__v[data-status="configured_unverified"] {
+  color: #ffc978;
+}
+
+.voris-hud__v[data-status="not_configured"],
+.voris-hud__v[data-status="unavailable"],
+.voris-hud__v[data-status="unknown"] {
+  color: #6d8299;
+}
+
+/* -------------------------------------------------------------- sweep, hint */
+
+.voris-hud__sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 140px;
+  background: linear-gradient(180deg, transparent, rgba(0, 180, 255, 0.05), transparent);
+  animation: voris-hud-drift 7s linear infinite;
+}
+
+@keyframes voris-hud-drift {
+  from { transform: translateY(-140px); }
+  to { transform: translateY(100vh); }
+}
+
+.voris-hud__hint {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(79, 123, 163, 0.55);
+}
+
+/* The orb is the control that opens all of this. */
+.orb-wrapper {
+  cursor: pointer;
+}
+
+.orb-wrapper:focus-visible {
+  outline: 2px solid #8fd4ff;
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voris-hud__sweep { display: none; }
+  .voris-hud__title,
+  .voris-hud__sub { transition: none; }
+}

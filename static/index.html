@@ -13,6 +13,22 @@
     />
     <link rel="stylesheet" href="/assets/styles.css" />
     <link rel="stylesheet" href="/assets/settings.css" />
+    <link rel="stylesheet" href="/assets/hud.css" />
+
+    <!--
+      Three.js is vendored (minified build + LICENSE) under
+      interface/web_v2/vendor/three/, served through the /static-v2 mount.
+      Paths are absolute because this page is served at "/", so a relative
+      "vendor/..." would resolve to "/vendor/..." and 404.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/static-v2/vendor/three/three.module.min.js",
+          "three/addons/": "/static-v2/vendor/three/"
+        }
+      }
+    </script>
 
     <style>
       .composer {
@@ -125,9 +141,15 @@
             <button type="button" class="btn btn--ghost" id="newChatButton">New chat</button>
             <div class="top-header__orb-cluster" aria-label="VORIS presence">
               <span class="orb-caption" id="orbCaption">Calm presence</span>
-              <div class="orb-wrapper" id="orbStage">
+              <div
+                class="orb-wrapper"
+                id="orbStage"
+                role="button"
+                tabindex="0"
+                aria-label="Open the VORIS presence display"
+              >
                 <div class="orb-halo" aria-hidden="true"></div>
-                <div class="voris-orb" id="vorisOrb" role="img" aria-label="VORIS orb">
+                <div class="voris-orb" id="vorisOrb" aria-hidden="true">
                   <div class="voris-orb__core"></div>
                   <div class="voris-orb__sheen"></div>
                 </div>
@@ -179,6 +201,7 @@
       </main>
     </div>
 
+    <script type="module" src="/assets/hud.js"></script>
     <script src="/assets/app.js" defer></script>
     <script src="/assets/settings.js" defer></script>
   </body>

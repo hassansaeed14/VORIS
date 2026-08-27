@@ -9,6 +9,17 @@
     error: "Needs a clean retry",
   };
 
+  // This workspace has four assistant states; the HUD spec defines four of its
+  // own. "error" has no HUD equivalent and falls back to the resting look.
+  // "listening" is unreachable from here -- nothing in this UI captures audio --
+  // so it is only ever set through window.VorisHUD.setState() directly.
+  const HUD_STATE_BY_ASSISTANT_STATE = {
+    idle: "locked",
+    thinking: "thinking",
+    responding: "speaking",
+    error: "locked",
+  };
+
   const el = {};
   const state = {
     sessionId: localStorage.getItem(STORAGE_KEY_SESSION) || createSessionId(),
@@ -40,6 +51,7 @@
     el.sessionLabel = document.getElementById("sessionLabel");
     el.capabilityList = document.getElementById("capabilityList");
     el.providerList = document.getElementById("providerList");
+    el.orbStage = document.getElementById("orbStage");
     el.newChatButton = document.getElementById("newChatButton");
   }
 
@@ -65,6 +77,11 @@
         el.runtimeDot.classList.add("status-dot--idle");
       }
     }
+
+    // The HUD is a second subscriber to this one state function rather than a
+    // parallel channel. This workspace has no WebSocket -- assistant state is
+    // local -- so this is the broadcast point.
+    window.VorisHUD?.setState(HUD_STATE_BY_ASSISTANT_STATE[normalized] || "locked");
   }
 
   function setComposerStatus(text) {
@@ -532,6 +549,7 @@
           timestamp: new Date().toISOString(),
         });
       }
+      window.VorisHUD?.say(String(payload.reply || payload.content || ""));
       setAssistantState("responding");
       if (el.systemFileInput) {
         el.systemFileInput.value = "";
@@ -647,6 +665,11 @@
       }
       renderCapabilityList(capabilities?.items || []);
       renderProviderList(providers?.items || []);
+      // Hand the HUD the same real payload; it renders no panel without it.
+      window.VorisHUD?.setTelemetry({
+        providers: providers?.items || [],
+        runtime: String(health?.status || ""),
+      });
     } catch (_error) {
       renderCapabilityList([]);
       renderProviderList([]);
@@ -654,6 +677,13 @@
   }
 
   function bindEvents() {
+    el.orbStage?.addEventListener("click", () => window.VorisHUD?.toggle());
+    el.orbStage?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        window.VorisHUD?.toggle();
+      }
+    });
     el.composerForm?.addEventListener("submit", handleSubmit);
     el.newChatButton?.addEventListener("click", () => {
       state.sessionId = createSessionId();
