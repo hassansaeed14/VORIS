@@ -1,0 +1,88 @@
+name: Fresh installation
+
+# Installs VORIS the way a new user would -- clean machine, requirements.txt,
+# boot the documented entry point -- and proves the server actually answers.
+# tests.yml runs against a warm developer environment and cannot catch a
+# dependency that is imported but never declared.
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'   # Mondays 04:17 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'requirements.txt'
+      - 'run_voris.py'
+      - 'config/server.json'
+      - '.github/workflows/fresh-install.yml'
+
+jobs:
+  fresh-install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev python3-dev
+
+      - name: Install from the manifest only
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+
+      - name: Verify declared dependencies cover the entry point
+        run: |
+          # Catches the class of bug where a module is imported but never
+          # declared: the import fails here rather than at a user's first run.
+          python -c "import run_voris" || {
+            echo "run_voris.py could not be imported from a clean install."
+            echo "Something it imports is missing from requirements.txt."
+            exit 1
+          }
+
+      - name: Boot and health-check
+        run: |
+          python run_voris.py > server.log 2>&1 &
+          echo $! > server.pid
+
+          # config/server.json sets port 5000.
+          #
+          # On a fresh install no user exists, so requires_first_run_setup() is
+          # true and the middleware redirects /ping to /setup (302) and returns
+          # 503 for anything under /api/. On a configured machine /ping is 200.
+          # Both prove the app booted and routed, so accept either -- but assert
+          # the code explicitly. `curl -sf` would treat the 302 as success and
+          # prove nothing, since -f only fails on status >= 400.
+          for i in $(seq 1 45); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:5000/ping || echo 000)
+            case "$code" in
+              200|302)
+                echo "Server answered /ping with HTTP $code after ${i} attempt(s)."
+                exit 0
+                ;;
+            esac
+            sleep 2
+          done
+
+          echo "Server never answered on port 5000. Last status: ${code:-none}"
+          exit 1
+
+      - name: Server log
+        if: failure()
+        run: cat server.log || echo "no server.log produced"
+
+      - name: Upload server log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fresh-install-server-log
+          path: server.log
+          if-no-files-found: ignore
